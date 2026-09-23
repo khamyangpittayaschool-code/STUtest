@@ -1,0 +1,2001 @@
+# PROMPT — SENIOR FULL-STACK DEVELOPER
+
+## AI TRAINING MANAGEMENT, GAMIFICATION & ASSIGNMENT SYSTEM
+
+คุณคือ **Senior Full-stack Developer, Software Architect, Database Architect และ UI/UX Designer** มีหน้าที่ออกแบบและพัฒนาระบบ Web Application สำหรับโรงเรียน เพื่อใช้บริหารจัดการกิจกรรมอบรมการประยุกต์ใช้เทคโนโลยีปัญญาประดิษฐ์ (Artificial Intelligence: AI)
+
+ระบบต้องเป็น **Production-ready Web Application** สามารถใช้งานจริงได้ ไม่ใช่เพียง Mockup หรือ Static UI
+
+ระบบต้องรองรับผู้ใช้งานพร้อมกันประมาณ **200 คน** และต้องออกแบบให้สามารถขยายจำนวนผู้ใช้งานในอนาคตได้
+
+---
+
+# 1. ชื่อระบบ
+
+**AI Training Management & Gamification System**
+
+ชื่อภาษาไทย:
+
+**ระบบบริหารจัดการกิจกรรมอบรมการประยุกต์ใช้เทคโนโลยีปัญญาประดิษฐ์**
+
+ระบบประกอบด้วย
+
+1. ระบบสมาชิก
+2. ระบบ Login
+3. ระบบจัดการผู้ใช้งาน
+4. ระบบกิจกรรม
+5. ระบบกลุ่ม
+6. ระบบสร้างโพสต์
+7. ระบบประกาศ
+8. ระบบมอบหมายงาน
+9. ระบบส่งงาน
+10. ระบบแนบไฟล์
+11. ระบบตรวจงาน
+12. ระบบให้คะแนน
+13. ระบบสร้างรหัสจำนวนมาก
+14. ระบบกรอกรหัสรับคะแนน
+15. ระบบคะแนนส่วนตัว
+16. ระบบคะแนนกลุ่ม
+17. ระบบ Leaderboard
+18. ระบบ Real-time
+19. ระบบรายงาน
+20. ระบบ Audit Log
+
+---
+
+# 2. Technology Stack
+
+ให้ใช้ Stack ต่อไปนี้
+
+## Frontend
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* Responsive Design
+* Mobile First
+
+## Backend
+
+ใช้ Supabase เป็น Backend
+
+* Supabase Auth
+* PostgreSQL
+* Supabase Realtime
+* Supabase Storage
+* PostgreSQL Functions / RPC
+* Row Level Security (RLS)
+
+## Deployment
+
+รองรับ
+
+* Vercel
+* Supabase
+
+ใช้ Environment Variables สำหรับ Secret และ API Key
+
+ห้ามใส่ Secret Key ลงใน Client-side Code
+
+---
+
+# 3. แนวคิดหลักของระบบ
+
+ระบบมี 3 กลุ่มผู้ใช้งาน
+
+```text
+SUPER_ADMIN
+TEACHER
+STUDENT
+```
+
+Flow หลัก
+
+```text
+สมัครสมาชิก
+      ↓
+เข้าสู่ระบบทันที
+      ↓
+เลือก/สร้างกลุ่ม
+      ↓
+เข้าร่วมกิจกรรม
+      ↓
+อ่านโพสต์
+      ↓
+ทำภารกิจ / ตอบคำถาม / ส่งงาน
+      ↓
+ได้รับคะแนน
+      ↓
+คะแนนส่วนตัว + คะแนนกลุ่ม
+      ↓
+Leaderboard
+```
+
+---
+
+# 4. ระบบสมาชิก
+
+## สำคัญ
+
+**ไม่ต้องรอ Super Admin อนุมัติ**
+
+ผู้ใช้สมัครสมาชิกเองได้
+
+หลังสมัครสำเร็จสามารถ Login และใช้งานได้ทันที
+
+สถานะเริ่มต้น:
+
+```text
+ACTIVE
+```
+
+ไม่ต้องใช้สถานะ
+
+```text
+PENDING
+REJECTED
+```
+
+---
+
+# 5. Student Registration
+
+ข้อมูล
+
+* ชื่อ-นามสกุล
+* Email หรือ Username
+* Password
+* รหัสนักเรียน
+* ระดับชั้น
+* ห้อง
+* ปีการศึกษา
+
+ตรวจสอบ
+
+* Email ซ้ำ
+* Username ซ้ำ
+* รหัสนักเรียนซ้ำ หากกำหนดให้ไม่ซ้ำ
+
+สมัครสำเร็จแล้วเข้าสู่ Dashboard
+
+---
+
+# 6. Teacher Registration
+
+ข้อมูล
+
+* ชื่อ-นามสกุล
+* Email
+* Password
+* ตำแหน่ง
+* กลุ่มสาระ
+* หน่วยงาน
+
+สมัครแล้วใช้งานได้ทันที
+
+---
+
+# 7. Super Admin
+
+Super Admin มีสิทธิ์สูงสุด
+
+สามารถ
+
+* จัดการสมาชิก
+* จัดการครู
+* จัดการนักเรียน
+* สร้างกิจกรรม
+* แก้ไขกิจกรรม
+* ลบกิจกรรม
+* สร้างโพสต์
+* สร้างงาน
+* ตรวจงาน
+* สร้าง Code Batch
+* สร้างรหัสจำนวนมาก
+* กำหนดคะแนน
+* ดูคะแนน
+* จัดการกลุ่ม
+* ดู Leaderboard
+* Export รายงาน
+* ดู Audit Log
+* ระงับบัญชี
+
+---
+
+# 8. ระบบสถานะสมาชิก
+
+ใช้
+
+```text
+ACTIVE
+SUSPENDED
+DISABLED
+```
+
+หาก Super Admin ระงับบัญชี ผู้ใช้ไม่สามารถเข้าสู่ระบบหรือใช้งานฟังก์ชันสำคัญได้
+
+---
+
+# 9. ระบบกิจกรรม
+
+Super Admin สามารถสร้างกิจกรรม
+
+ตัวอย่าง
+
+```text
+กิจกรรม:
+อบรมการประยุกต์ใช้ AI
+
+วันที่:
+26 กันยายน 2569
+
+รายละเอียด:
+การประยุกต์ใช้ Gemini, ChatGPT และ NotebookLM
+```
+
+ข้อมูลกิจกรรม
+
+* ชื่อกิจกรรม
+* รายละเอียด
+* รูปภาพปก
+* วันเริ่ม
+* วันสิ้นสุด
+* สถานะ
+* จำนวนผู้เข้าร่วม
+* เปิด/ปิดการรับงาน
+* เปิด/ปิดระบบคะแนน
+
+สถานะ
+
+```text
+DRAFT
+ACTIVE
+CLOSED
+```
+
+---
+
+# 10. ระบบโพสต์
+
+สร้างระบบ Feed สำหรับกิจกรรม
+
+Super Admin หรือ Teacher ที่ได้รับสิทธิ์สามารถสร้างโพสต์
+
+ประเภทโพสต์
+
+```text
+ANNOUNCEMENT
+ASSIGNMENT
+MEDIA
+DISCUSSION
+ACTIVITY
+DOCUMENT
+```
+
+---
+
+# 11. การสร้างโพสต์
+
+หน้าสร้างโพสต์ต้องมี
+
+### หัวข้อ
+
+เช่น
+
+> 📢 ประกาศกิจกรรมอบรม AI
+
+### เนื้อหา
+
+รองรับ
+
+* ตัวอักษร
+* Emoji
+* การขึ้นบรรทัด
+* รายการ
+* ลิงก์
+
+### แนบไฟล์
+
+รองรับ
+
+* รูปภาพ
+* วิดีโอ
+* PDF
+* Word
+* PowerPoint
+* Excel
+* ไฟล์ทั่วไปที่อนุญาต
+
+สามารถแนบได้หลายไฟล์
+
+---
+
+# 12. ระบบโพสต์แบบ Social Feed
+
+หน้าแรกกิจกรรมให้แสดงโพสต์เรียงตามเวลา
+
+ตัวอย่าง
+
+```text
+┌─────────────────────────────────────┐
+│ 📢 ประกาศ                           │
+│                                     │
+│ กิจกรรมอบรม AI รอบที่ 1             │
+│                                     │
+│ รายละเอียดกิจกรรม...                │
+│                                     │
+│ 🖼️ image.jpg                       │
+│                                     │
+│ ❤️ 25   💬 8                        │
+└─────────────────────────────────────┘
+```
+
+---
+
+# 13. ระบบปักหมุดโพสต์
+
+Admin สามารถ
+
+**Pin Post**
+
+โพสต์ที่ปักหมุดจะแสดงด้านบน
+
+ตัวอย่าง
+
+```text
+📌 ประกาศสำคัญ
+📌 งานที่ต้องส่ง
+📌 กำหนดการ
+```
+
+---
+
+# 14. ระบบมอบหมายงาน
+
+ประเภทโพสต์
+
+```text
+ASSIGNMENT
+```
+
+สามารถกำหนด
+
+* ชื่องาน
+* รายละเอียด
+* คำสั่งงาน
+* ไฟล์ประกอบ
+* วันเริ่มส่ง
+* กำหนดส่ง
+* คะแนนเต็ม
+* ให้คะแนนเข้าคะแนนส่วนตัวหรือไม่
+* ให้คะแนนเข้าคะแนนกลุ่มหรือไม่
+* จำนวนไฟล์ที่ส่งได้
+* ประเภทไฟล์ที่อนุญาต
+
+ตัวอย่าง
+
+```text
+งานที่ 1
+สร้างภาพด้วย AI
+
+คะแนนเต็ม:
+20 คะแนน
+
+กำหนดส่ง:
+26/09/2569 16:00 น.
+```
+
+---
+
+# 15. ระบบส่งงานนักเรียน
+
+นักเรียนเปิด Assignment
+
+อ่านโจทย์
+
+กด
+
+**ส่งงาน**
+
+รองรับ
+
+### 1. ข้อความ
+
+```text
+อธิบายแนวคิดในการสร้างภาพ...
+```
+
+### 2. รูปภาพ
+
+รองรับ JPG, JPEG, PNG, WEBP
+
+### 3. วิดีโอ
+
+รองรับ MP4 และรูปแบบที่กำหนด
+
+### 4. เอกสาร
+
+รองรับ
+
+* PDF
+* DOC
+* DOCX
+* PPT
+* PPTX
+* XLS
+* XLSX
+
+### 5. Link
+
+เช่น
+
+* Google Drive
+* YouTube
+* เว็บไซต์
+* Canva
+* NotebookLM
+* เครื่องมือ AI อื่น ๆ
+
+---
+
+# 16. ส่งงานหลายไฟล์
+
+นักเรียนสามารถแนบหลายไฟล์ใน Submission เดียว
+
+ตัวอย่าง
+
+```text
+งานที่ 1
+
+ข้อความ:
+สร้างสื่อประชาสัมพันธ์โดยใช้ AI
+
+ไฟล์:
+1. poster.png
+2. poster2.png
+3. presentation.pptx
+4. video.mp4
+```
+
+---
+
+# 17. ระบบ Draft งาน
+
+นักเรียนสามารถ
+
+**บันทึกแบบร่าง**
+
+ก่อนส่งจริง
+
+สถานะ
+
+```text
+DRAFT
+SUBMITTED
+GRADED
+RETURNED
+```
+
+---
+
+# 18. แก้ไข/ส่งงานใหม่
+
+Admin สามารถกำหนดได้ว่า
+
+```text
+อนุญาตแก้ไข = YES / NO
+```
+
+ถ้าอนุญาต นักเรียนสามารถส่งใหม่ได้ก่อนกำหนด
+
+ระบบต้องเก็บ Version ของการส่งงาน
+
+ตัวอย่าง
+
+```text
+Version 1
+Version 2
+Version 3
+```
+
+---
+
+# 19. ระบบตรวจงาน
+
+ครูหรือ Super Admin เปิดรายการงาน
+
+แสดง
+
+```text
+ชื่อ
+กลุ่ม
+วันที่ส่ง
+สถานะ
+คะแนน
+```
+
+ตัวอย่าง
+
+```text
+นาย ก
+AI Genius
+ส่งแล้ว
+รอตรวจ
+
+นางสาว ข
+AI Creator
+ตรวจแล้ว
+18/20
+```
+
+---
+
+# 20. การให้คะแนนงาน
+
+ผู้ตรวจสามารถ
+
+* ให้คะแนน
+* เขียน Feedback
+* ขอแก้ไข
+* ยืนยันคะแนน
+
+ตัวอย่าง
+
+```text
+คะแนนเต็ม 20
+
+คะแนนที่ได้
+18
+
+ความคิดเห็น:
+ผลงานดี มีการใช้ AI ได้เหมาะสม
+```
+
+---
+
+# 21. เชื่อมคะแนนงานกับ Gamification
+
+ตอนสร้าง Assignment ให้เลือก
+
+```text
+เพิ่มคะแนนส่วนตัว:
+YES / NO
+
+เพิ่มคะแนนกลุ่ม:
+YES / NO
+```
+
+ตัวอย่าง
+
+```text
+คะแนนเต็ม 20
+นักเรียนได้ 18
+
+Individual Score
++18
+
+Group Score
++18
+```
+
+หากเลือกเฉพาะคะแนนส่วนตัว
+
+```text
+Individual
++18
+
+Group
++0
+```
+
+---
+
+# 22. ระบบ Code Batch
+
+Super Admin สามารถสร้างรหัสจำนวนมาก
+
+ตัวอย่าง
+
+```text
+ชื่อชุด:
+Gemini Challenge 01
+
+กิจกรรม:
+Gemini Prompt
+
+จำนวน:
+100
+
+ความยาว:
+5
+
+คะแนน:
+10 คะแนน / รหัส
+```
+
+กด
+
+**สร้างรหัส**
+
+ระบบสร้าง 100 รหัสทันที
+
+---
+
+# 23. รูปแบบ Code
+
+ใช้
+
+```text
+ABCDEFGHJKLMNPQRSTUVWXYZ23456789
+```
+
+ตัด
+
+```text
+I
+O
+0
+1
+```
+
+ออก
+
+เพื่อป้องกันความสับสน
+
+ตัวอย่าง
+
+```text
+K7X2M
+Q9R4Z
+VJ3P8
+N6T8W
+C4Y9K
+```
+
+---
+
+# 24. Bulk Code Generator
+
+ต้องสามารถสร้าง
+
+```text
+10
+50
+100
+500
+1,000
+5,000
+10,000
+```
+
+หรือกำหนดจำนวนเอง
+
+ต้องมี Unique Constraint
+
+```text
+UNIQUE(code)
+```
+
+ห้ามสร้างรหัสซ้ำ
+
+การสร้างรหัสต้องทำฝั่ง Server
+
+---
+
+# 25. กำหนดคะแนนรายชุด
+
+Super Admin สามารถกำหนด
+
+```text
+Batch A
+100 codes
+10 คะแนน/code
+
+Batch B
+100 codes
+20 คะแนน/code
+
+Batch C
+50 codes
+50 คะแนน/code
+```
+
+คะแนนของแต่ละ Batch ไม่จำเป็นต้องเท่ากัน
+
+---
+
+# 26. Code Submission
+
+นักเรียนมีหน้า
+
+**กรอกรหัส**
+
+ช่องกรอกจำกัด 5 ตัว
+
+ระบบ
+
+* แปลงเป็น Uppercase
+* ตัด Space
+* จำกัดอักขระ
+* จำกัดความยาว
+* ตรวจสอบฝั่ง Server
+
+---
+
+# 27. Code Validation
+
+เมื่อส่งรหัส
+
+```text
+Student
+↓
+Submit Code
+↓
+Server Validation
+↓
+ค้นหา Code
+↓
+ตรวจสอบ Activity
+↓
+ตรวจสอบ Batch
+↓
+ตรวจสอบสถานะ
+↓
+ตรวจสอบการใช้ซ้ำ
+↓
+ตรวจสอบเวลา
+↓
+เพิ่มคะแนน
+```
+
+---
+
+# 28. Code ใช้ซ้ำไม่ได้
+
+รหัสหนึ่งต้องป้องกันการได้รับคะแนนซ้ำ
+
+สร้าง Unique Constraint
+
+```text
+user_id + code_id
+```
+
+หากใช้แล้ว
+
+```text
+⚠️ รหัสนี้ถูกใช้แล้ว
+```
+
+---
+
+# 29. ระบบคะแนน
+
+แบ่งเป็น
+
+```text
+Individual Score
+Group Score
+```
+
+ทุกการเปลี่ยนแปลงคะแนนต้องสร้าง Score Transaction
+
+ข้อมูล
+
+```text
+user_id
+group_id
+activity_id
+source_type
+source_id
+points
+reason
+created_at
+```
+
+Source Type เช่น
+
+```text
+CODE
+ASSIGNMENT
+BONUS
+ADMIN_ADJUSTMENT
+```
+
+---
+
+# 30. ห้ามแก้คะแนนจาก Frontend
+
+คะแนนต้องคำนวณจาก Server / Database
+
+ห้ามรับค่า
+
+```text
+points
+```
+
+จาก Client แล้วเชื่อถือทันที
+
+ตัวอย่างที่ไม่อนุญาต:
+
+```text
+POST /score
+{
+  "points": 1000
+}
+```
+
+Server ต้องเป็นผู้กำหนดคะแนนจาก Code Batch หรือ Assignment
+
+---
+
+# 31. Atomic Transaction
+
+การให้คะแนนต้องเป็น Transaction
+
+```text
+BEGIN
+
+ตรวจสอบ Code
+
+Lock Code
+
+ตรวจสอบการใช้ซ้ำ
+
+เพิ่ม Score Transaction
+
+เพิ่ม Individual Score
+
+เพิ่ม Group Score
+
+เปลี่ยน Code เป็น USED
+
+บันทึก Audit Log
+
+COMMIT
+```
+
+หากเกิด Error
+
+```text
+ROLLBACK
+```
+
+ต้องไม่เกิดกรณี
+
+```text
+คะแนนเพิ่ม
+แต่ Code ยังไม่ถูกบันทึกว่าใช้แล้ว
+```
+
+หรือ
+
+```text
+Code ถูกใช้
+แต่คะแนนไม่เพิ่ม
+```
+
+---
+
+# 32. Leaderboard
+
+สร้าง 2 Leaderboard
+
+## นักเรียน
+
+แสดง
+
+* อันดับ
+* ชื่อ
+* กลุ่ม
+* คะแนน
+
+## กลุ่ม
+
+แสดง
+
+* อันดับ
+* ชื่อกลุ่ม
+* จำนวนสมาชิก
+* คะแนน
+
+เรียงจากคะแนนมากไปน้อย
+
+หากคะแนนเท่ากันให้รองรับอันดับร่วม หรือใช้เวลาที่ทำคะแนนถึงยอดดังกล่าวเป็น Tie-breaker ตามที่ระบบกำหนด
+
+---
+
+# 33. Real-time Leaderboard
+
+ใช้ Supabase Realtime
+
+เมื่อมีคะแนนเพิ่ม
+
+```text
+Score Updated
+↓
+Realtime
+↓
+Leaderboard
+```
+
+ผู้ใช้งานไม่ต้อง Refresh
+
+---
+
+# 34. Student Dashboard
+
+แสดง
+
+```text
+สวัสดี [ชื่อ]
+
+⭐ คะแนนของฉัน
+120
+
+👥 กลุ่ม
+AI Genius
+
+🏆 คะแนนกลุ่ม
+450
+
+🥇 อันดับส่วนตัว
+#5
+
+🏆 อันดับกลุ่ม
+#1
+```
+
+เมนู
+
+```text
+หน้าแรก
+กิจกรรม
+โพสต์
+งานของฉัน
+กรอกรหัส
+กลุ่มของฉัน
+Leaderboard
+คะแนนของฉัน
+ประวัติ
+โปรไฟล์
+```
+
+---
+
+# 35. Teacher Dashboard
+
+แสดง
+
+* กิจกรรม
+* โพสต์
+* งาน
+* รายการส่งงาน
+* ตรวจงาน
+* Leaderboard
+
+Teacher ไม่สามารถสร้าง Code Batch หรือแก้คะแนนโดยตรง เว้นแต่ Super Admin กำหนด Permission เพิ่ม
+
+---
+
+# 36. Super Admin Dashboard
+
+แสดง Card
+
+```text
+สมาชิกทั้งหมด
+นักเรียน
+ครู
+กลุ่ม
+กิจกรรม
+โพสต์
+งาน
+รหัสทั้งหมด
+รหัสที่ใช้แล้ว
+รหัสคงเหลือ
+คะแนนรวม
+```
+
+พร้อมกราฟ
+
+* สมาชิก
+* การส่งงาน
+* การใช้รหัส
+* คะแนน
+* กิจกรรม
+
+---
+
+# 37. ระบบความคิดเห็น
+
+โพสต์สามารถเปิด/ปิด Comment
+
+ถ้าเปิด
+
+ผู้ใช้สามารถ
+
+* แสดงความคิดเห็น
+* ตอบกลับ
+* แก้ไขความคิดเห็นของตนเอง
+* ลบความคิดเห็นของตนเอง
+
+Admin สามารถลบความคิดเห็นที่ไม่เหมาะสม
+
+---
+
+# 38. ระบบ Reaction
+
+สามารถมี
+
+* ❤️
+* 👍
+* 🎉
+* 💡
+
+แต่ Reaction ไม่เกี่ยวข้องกับคะแนน เว้นแต่ Admin เปิดใช้ระบบ Bonus โดยเฉพาะ
+
+---
+
+# 39. ระบบ Notification
+
+แจ้งเตือนเมื่อ
+
+* มีโพสต์ใหม่
+* มีงานใหม่
+* งานใกล้หมดเวลา
+* ครูตรวจงานแล้ว
+* งานถูกส่งกลับให้แก้
+* ได้รับคะแนน
+* คะแนนกลุ่มเปลี่ยนอันดับ
+
+---
+
+# 40. File Upload
+
+ใช้ Supabase Storage
+
+แบ่ง Bucket หรือ Folder ตามประเภท
+
+```text
+post-images/
+post-videos/
+post-files/
+
+submission-images/
+submission-videos/
+submission-files/
+```
+
+ตรวจสอบ
+
+* MIME Type
+* File Extension
+* File Size
+* Authentication
+* Authorization
+
+ห้ามอนุญาตไฟล์อันตราย
+
+---
+
+# 41. File Security
+
+ไฟล์ที่ส่งงานต้องไม่สามารถเปิดดูได้โดยผู้ไม่มีสิทธิ์
+
+กำหนดสิทธิ์
+
+```text
+Student
+→ เห็นไฟล์ของตนเอง
+
+Teacher
+→ เห็นไฟล์ของงานที่ได้รับอนุญาต
+
+Super Admin
+→ เห็นทั้งหมด
+```
+
+ใช้ Signed URL หากเหมาะสม
+
+---
+
+# 42. Database Tables
+
+สร้างอย่างน้อย
+
+```text
+profiles
+
+groups
+
+group_members
+
+activities
+
+posts
+
+post_attachments
+
+assignments
+
+submissions
+
+submission_versions
+
+submission_attachments
+
+comments
+
+reactions
+
+notifications
+
+code_batches
+
+activity_codes
+
+score_transactions
+
+user_scores
+
+group_scores
+
+audit_logs
+```
+
+---
+
+# 43. posts
+
+Fields
+
+```text
+id
+activity_id
+author_id
+post_type
+title
+content
+is_pinned
+allow_comment
+status
+created_at
+updated_at
+```
+
+---
+
+# 44. assignments
+
+Fields
+
+```text
+id
+post_id
+activity_id
+max_score
+start_at
+due_at
+allow_resubmission
+max_files
+allow_text
+allow_image
+allow_video
+allow_document
+allow_link
+add_individual_score
+add_group_score
+status
+created_at
+updated_at
+```
+
+---
+
+# 45. submissions
+
+Fields
+
+```text
+id
+assignment_id
+student_id
+group_id
+content
+link_url
+status
+current_version
+score
+feedback
+submitted_at
+graded_at
+graded_by
+created_at
+updated_at
+```
+
+---
+
+# 46. submission_versions
+
+เก็บประวัติการส่งงาน
+
+```text
+id
+submission_id
+version_number
+content
+link_url
+submitted_at
+```
+
+---
+
+# 47. code_batches
+
+Fields
+
+```text
+id
+batch_name
+activity_id
+quantity
+code_length
+points_per_code
+character_set
+status
+created_by
+created_at
+```
+
+---
+
+# 48. activity_codes
+
+Fields
+
+```text
+id
+batch_id
+activity_id
+code
+points
+status
+used_by
+used_group_id
+used_at
+created_at
+```
+
+สร้าง
+
+```text
+UNIQUE(code)
+```
+
+---
+
+# 49. score_transactions
+
+Fields
+
+```text
+id
+user_id
+group_id
+activity_id
+source_type
+source_id
+points
+score_type
+reason
+created_at
+```
+
+---
+
+# 50. Audit Log
+
+บันทึก
+
+```text
+User Registered
+User Login
+Group Created
+Group Joined
+Post Created
+Assignment Created
+Submission Created
+Submission Graded
+Code Batch Created
+Code Used
+Score Added
+Score Adjusted
+User Suspended
+```
+
+---
+
+# 51. RLS
+
+ต้องเปิด RLS ทุก Table ที่มีข้อมูลสำคัญ
+
+Student อ่านได้เฉพาะข้อมูลที่มีสิทธิ์
+
+Teacher อ่านข้อมูลตาม Permission
+
+Super Admin จัดการได้ทั้งหมด
+
+ห้ามใช้ Policy แบบเปิดกว้างกับข้อมูลสำคัญ
+
+---
+
+# 52. Performance
+
+รองรับผู้ใช้งานพร้อมกันประมาณ 200 คน
+
+ต้องใช้
+
+* Index
+* Pagination
+* Server-side Query
+* Efficient Query
+* Database Transaction
+* Realtime เฉพาะส่วนที่จำเป็น
+
+สร้าง Index เช่น
+
+```text
+activity_codes.code
+activity_codes.batch_id
+activity_codes.status
+
+score_transactions.user_id
+score_transactions.group_id
+score_transactions.activity_id
+
+group_members.user_id
+group_members.group_id
+
+posts.activity_id
+posts.created_at
+
+submissions.assignment_id
+submissions.student_id
+```
+
+---
+
+# 53. Responsive Design
+
+ต้องรองรับ
+
+* Mobile
+* Tablet
+* Desktop
+
+ออกแบบ Mobile First
+
+เน้นหน้าที่นักเรียนใช้บ่อย
+
+```text
+กรอกรหัส
+ดูงาน
+ส่งงาน
+ดูคะแนน
+Leaderboard
+```
+
+---
+
+# 54. UI Design
+
+Design Concept:
+
+**Modern School + AI**
+
+ใช้สีหลัก
+
+* ฟ้า
+* เขียวมิ้นท์
+* ขาว
+* สี Accent สำหรับ Interaction
+
+UI ต้อง
+
+* อ่านง่าย
+* สบายตา
+* ไม่ซับซ้อน
+* มี Card ที่เหมาะสม
+* มี Icon
+* มี Empty State
+* มี Loading State
+* มี Error State
+* มี Success State
+
+---
+
+# 55. Mobile Code Input
+
+ช่อง Code ต้อง
+
+* ขนาดใหญ่
+* จำกัด 5 ตัว
+* Uppercase
+* ตัด Space
+* รองรับ Keyboard
+* Submit ได้ง่าย
+
+ตัวอย่าง
+
+```text
+┌──────────────────────────┐
+│      กรอกรหัสกิจกรรม     │
+│                          │
+│       [ K7X2M ]          │
+│                          │
+│       [ ส่งรหัส ]         │
+└──────────────────────────┘
+```
+
+---
+
+# 56. Success Message
+
+เมื่อสำเร็จ
+
+```text
+🎉 ถูกต้อง!
+
+คุณได้รับ +10 คะแนน
+
+คะแนนส่วนตัว
+120 → 130
+
+คะแนนกลุ่ม
+440 → 450
+```
+
+---
+
+# 57. Assignment Submission Success
+
+เมื่อส่งงาน
+
+```text
+✅ ส่งงานสำเร็จ
+
+งาน:
+สร้างภาพด้วย AI
+
+ส่งเมื่อ:
+26/09/2569 14:32 น.
+
+สถานะ:
+รอตรวจ
+```
+
+---
+
+# 58. Notification Center
+
+สร้าง Bell Icon
+
+เมื่อมี Notification ใหม่แสดง Badge
+
+ตัวอย่าง
+
+```text
+🔔 3
+```
+
+รายการ
+
+```text
+🎯 คุณได้รับ 10 คะแนน
+📝 ครูตรวจงานของคุณแล้ว
+📢 มีประกาศใหม่
+🏆 กลุ่มของคุณขึ้นอันดับ 1
+```
+
+---
+
+# 59. Search
+
+Super Admin ต้องสามารถค้นหา
+
+* สมาชิก
+* กลุ่ม
+* กิจกรรม
+* โพสต์
+* งาน
+* รหัส
+
+---
+
+# 60. Export
+
+รองรับ Export
+
+### สมาชิก
+
+CSV / Excel
+
+### คะแนน
+
+CSV / Excel
+
+### รหัส
+
+CSV / Excel
+
+### การส่งงาน
+
+CSV / Excel
+
+ข้อมูล Code Export
+
+```text
+Code
+Batch
+Activity
+Points
+Status
+Used By
+Used At
+```
+
+---
+
+# 61. Admin Score Adjustment
+
+Super Admin สามารถปรับคะแนนได้
+
+แต่ต้อง
+
+* ระบุจำนวนคะแนน
+* ระบุเหตุผล
+* บันทึก Audit Log
+
+ตัวอย่าง
+
+```text
+ปรับคะแนน
++5
+
+เหตุผล:
+Bonus จากกิจกรรม
+```
+
+การปรับคะแนนต้องสร้าง Score Transaction
+
+ห้ามแก้คะแนนเดิมโดยไม่มีประวัติ
+
+---
+
+# 62. ระบบ Bonus
+
+รองรับ Bonus ในอนาคต
+
+เช่น
+
+```text
+Bonus
++20 คะแนน
+```
+
+ต้องบันทึกเหตุผลเสมอ
+
+---
+
+# 63. Security
+
+ตรวจสอบ
+
+* Authentication
+* Authorization
+* RLS
+* XSS
+* SQL Injection
+* CSRF
+* Rate Limiting
+* Duplicate Submission
+* Race Condition
+* Privilege Escalation
+* File Upload Security
+* Sensitive Data Exposure
+* Score Manipulation
+
+โดยเฉพาะ
+
+**Client ต้องไม่มีสิทธิ์เพิ่มคะแนนด้วยตัวเอง**
+
+---
+
+# 64. Error Handling
+
+แสดงข้อความที่เข้าใจง่าย
+
+เช่น
+
+```text
+ไม่พบรหัส
+รหัสหมดอายุ
+รหัสถูกใช้แล้ว
+กิจกรรมปิดแล้ว
+ส่งงานไม่สำเร็จ
+ไฟล์มีขนาดใหญ่เกินกำหนด
+ประเภทไฟล์ไม่รองรับ
+คุณไม่มีสิทธิ์ดำเนินการ
+```
+
+ไม่แสดง SQL Error หรือข้อมูลภายในระบบแก่ผู้ใช้
+
+---
+
+# 65. Loading
+
+ทุก Action ต้องมี Loading
+
+เช่น
+
+```text
+กำลังตรวจสอบรหัส...
+กำลังส่งงาน...
+กำลังอัปโหลดไฟล์...
+กำลังบันทึก...
+```
+
+ป้องกันการกดปุ่มซ้ำ
+
+---
+
+# 66. Empty State
+
+หากไม่มีข้อมูล
+
+เช่น
+
+```text
+ยังไม่มีกิจกรรม
+ยังไม่มีงาน
+ยังไม่มีโพสต์
+ยังไม่มีสมาชิกในกลุ่ม
+ยังไม่มีคะแนน
+```
+
+ต้องมีข้อความที่เข้าใจง่าย
+
+---
+
+# 67. Testing
+
+สร้าง Test สำหรับ
+
+### Authentication
+
+* Register
+* Login
+* Logout
+* Forgot Password
+
+### Group
+
+* Create Group
+* Join Group
+* Duplicate Join
+
+### Code
+
+* Valid Code
+* Invalid Code
+* Used Code
+* Expired Code
+* Concurrent Submission
+
+### Score
+
+* Individual Score
+* Group Score
+* Duplicate Score
+* Rollback
+
+### Assignment
+
+* Submit
+* Resubmit
+* Grade
+* Feedback
+* File Upload
+
+### Permission
+
+* Student
+* Teacher
+* Super Admin
+
+---
+
+# 68. Critical Test
+
+ต้องทดสอบกรณีมีนักเรียนหลายคนกรอกรหัสในเวลาเดียวกัน
+
+ตัวอย่าง
+
+```text
+200 Students
+        ↓
+ส่ง Code พร้อมกัน
+        ↓
+Server
+        ↓
+Atomic Transaction
+        ↓
+ตรวจสอบ
+        ↓
+ให้คะแนน
+```
+
+ต้องไม่เกิด
+
+* คะแนนซ้ำ
+* คะแนนหาย
+* Code ถูกใช้ผิดคน
+* Group Score ผิด
+* Leaderboard ผิด
+
+---
+
+# 69. Acceptance Criteria
+
+ระบบถือว่าสมบูรณ์เมื่อ
+
+### สมาชิก
+
+นักเรียนสมัคร → Login ได้ทันที
+
+### กลุ่ม
+
+นักเรียนสร้างกลุ่ม → นักเรียนคนอื่นเข้ากลุ่มได้
+
+### Activity
+
+Admin สร้าง Activity → นักเรียนเห็น Activity
+
+### Post
+
+Admin/Teacher สร้าง Post → นักเรียนเห็น Post
+
+### Assignment
+
+Admin สร้างงาน → นักเรียนส่งข้อความ/รูป/วิดีโอ/ไฟล์/Link ได้
+
+### Grading
+
+ครูตรวจ → ให้คะแนน → นักเรียนเห็นคะแนน
+
+### Code
+
+Admin สร้าง 1,000 Code → ไม่มี Code ซ้ำ
+
+### Score
+
+นักเรียนกรอก Code → ได้คะแนนถูกต้อง
+
+### Group Score
+
+คะแนนกลุ่มเพิ่มตามกติกา
+
+### Duplicate
+
+กรอกรหัสเดิม → ไม่ได้คะแนนซ้ำ
+
+### Leaderboard
+
+คะแนนเปลี่ยน → อันดับเปลี่ยนแบบ Real-time
+
+### Security
+
+Student ไม่สามารถเพิ่ม/แก้คะแนนของตัวเอง
+
+---
+
+# 70. Development Order
+
+พัฒนาตามลำดับ
+
+## Phase 1
+
+Project Setup
+
+## Phase 2
+
+Supabase Database
+
+## Phase 3
+
+Authentication
+
+## Phase 4
+
+Role & Permission
+
+## Phase 5
+
+Groups
+
+## Phase 6
+
+Activities
+
+## Phase 7
+
+Posts
+
+## Phase 8
+
+Assignments
+
+## Phase 9
+
+File Upload
+
+## Phase 10
+
+Submission & Grading
+
+## Phase 11
+
+Code Batch
+
+## Phase 12
+
+Bulk Code Generator
+
+## Phase 13
+
+Code Submission
+
+## Phase 14
+
+Score System
+
+## Phase 15
+
+Leaderboard
+
+## Phase 16
+
+Realtime
+
+## Phase 17
+
+Notification
+
+## Phase 18
+
+Reports & Export
+
+## Phase 19
+
+Audit Log
+
+## Phase 20
+
+Security Testing
+
+## Phase 21
+
+Performance Testing
+
+## Phase 22
+
+Production Deployment
+
+---
+
+# 71. Final Developer Instructions
+
+ก่อนเริ่มพัฒนาให้ตรวจสอบ Project Structure ก่อน
+
+หากไม่มี Project ให้สร้างใหม่
+
+ต้องสร้าง Database Schema และ Migration ให้เรียบร้อยก่อนเชื่อม UI
+
+ห้ามสร้างเพียง Mockup
+
+ห้าม Hard-code ข้อมูลสำคัญ
+
+ห้าม Hard-code คะแนน
+
+ห้ามให้ Client เป็นผู้กำหนดคะแนน
+
+ห้ามส่ง Code ทั้งหมดไปยัง Client
+
+ห้ามให้ Student เข้าถึงข้อมูลที่ไม่มีสิทธิ์
+
+ทุกคะแนนต้องมี Transaction
+
+ทุกการปรับคะแนนต้องมี Audit Log
+
+ทุกไฟล์ต้องตรวจสอบ Permission
+
+ทุก API ต้องตรวจสอบ Authentication และ Authorization
+
+---
+
+# 72. End-to-End Flow ที่ต้องใช้งานได้จริง
+
+ต้องสามารถทำงานได้ครบดังนี้
+
+```text
+สมัครสมาชิก
+      ↓
+Login
+      ↓
+Student Dashboard
+      ↓
+สร้างกลุ่ม
+      ↓
+เพื่อนเข้ากลุ่ม
+      ↓
+Admin สร้าง Activity
+      ↓
+Admin สร้าง Post
+      ↓
+Admin สร้าง Assignment
+      ↓
+นักเรียนเปิดงาน
+      ↓
+ส่งข้อความ
++
+รูปภาพ
++
+วิดีโอ
++
+ไฟล์
++
+Link
+      ↓
+ครูตรวจงาน
+      ↓
+ให้คะแนน
+      ↓
+Individual Score
++
+Group Score
+      ↓
+Leaderboard
+      ↓
+Admin สร้าง Code Batch
+      ↓
+สร้าง Code 1,000 รหัส
+      ↓
+นักเรียนกรอกรหัส
+      ↓
+ตรวจสอบ
+      ↓
+เพิ่มคะแนน
+      ↓
+Leaderboard Update
+      ↓
+Realtime
+```
+
+---
+
+# 73. เป้าหมายสุดท้าย
+
+สร้างระบบที่มีความรู้สึกเหมือนการผสมกันระหว่าง
+
+**Learning Management System + Social Feed + Assignment System + Gamification Platform**
+
+โดยให้ผู้ใช้สามารถ
+
+**อ่าน → เรียนรู้ → ทำกิจกรรม → ส่งงาน → รับคะแนน → แข่งขัน → ดูอันดับ**
+
+ได้ภายในระบบเดียว
+
+ระบบต้องมีหน้าตาทันสมัย ใช้งานง่าย โดยเฉพาะบนโทรศัพท์มือถือ และต้องมีความปลอดภัยเพียงพอสำหรับการใช้งานจริงในสถานศึกษา
+
+เริ่มพัฒนาระบบตาม Phase 1 และดำเนินการต่อจนระบบครบตาม Acceptance Criteria ทั้งหมด
