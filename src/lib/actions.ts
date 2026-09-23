@@ -7,7 +7,14 @@ import {
   AssignmentItem,
   SubmissionItem,
 } from './data-store';
-import { Profile, ActivityCode, UserScoreLeaderboard, CodeRedemptionResult } from '../types/database';
+import {
+  Profile,
+  ActivityCode,
+  UserScoreLeaderboard,
+  CodeRedemptionResult,
+  StudentManagementItem,
+  CsvImportResult
+} from '../types/database';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Posts & Comments Actions
@@ -689,7 +696,7 @@ export async function registerStudentAction(data: {
   }
 }
 
-export async function loginStudentAction(username: string): Promise<Profile | null> {
+export async function loginStudentAction(username: string, password?: string): Promise<Profile | null> {
   try {
     const q = username.trim();
     const res = await query(
@@ -700,10 +707,202 @@ export async function loginStudentAction(username: string): Promise<Profile | nu
       [q, `%${q}%`]
     );
     if (res.rowCount === 0) return null;
-    return res.rows[0];
+    const user = res.rows[0];
+
+    // ตรวจสอบรหัสผ่าน (หากมีรหัสผ่านส่งมา และในบัญชีกำหนดรหัสเฉพาะไว้)
+    if (password && user.password && user.password !== '1234') {
+      if (password.trim() !== user.password.trim()) {
+        return null;
+      }
+    }
+
+    // บันทึกเวลาเข้าสู่ระบบล่าสุด (Login Tracking)
+    await query(
+      `UPDATE public.profiles SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1;`,
+      [user.id]
+    ).catch(() => {});
+
+    // บันทึก Audit Log การเข้าสู่ระบบ
+    await query(
+      `INSERT INTO public.audit_logs (user_id, action, entity_type, details, created_at)
+       VALUES ($1, 'USER_LOGIN', 'profiles', $2, NOW());`,
+      [user.id, JSON.stringify({ username: user.username, full_name: user.full_name })]
+    ).catch(() => {});
+
+    return user;
   } catch (error) {
     console.error('loginStudentAction error:', error);
     return null;
+  }
+}
+
+export async function getStudentsListAction(): Promise<StudentManagementItem[]> {
+  try {
+    const res = await query(`
+      SELECT 
+        p.id,
+        COALESCE(p.username, '') as username,
+        COALESCE(p.student_id, '') as student_id,
+        COALESCE(p.full_name, 'นักเรียน') as full_name,
+        COALESCE(p.grade_level, 'ม.5') as grade_level,
+        COALESCE(p.room, '1') as room,
+        COALESCE(p.status, 'ACTIVE') as status,
+        COALESCE(p.password, '1234') as password,
+        p.last_login_at,
+        p.created_at,
+        COALESCE(us.total_points, 0) as total_points
+      FROM public.profiles p
+      LEFT JOIN public.user_scores us ON p.id = us.user_id
+      WHERE p.role = 'STUDENT'
+      ORDER BY p.created_at DESC;
+    `);
+
+    return res.rows.map(r => ({
+      id: r.id,
+      username: r.username,
+      student_id: r.student_id,
+      full_name: r.full_name,
+      grade_level: r.grade_level,
+      room: r.room,
+      status: r.status,
+      password: r.password,
+      last_login_at: r.last_login_at ? formatThaiDate(r.last_login_at) : null,
+      created_at: formatThaiDate(r.created_at),
+      total_points: Number(r.total_points || 0),
+    }));
+  } catch (error) {
+    console.error('getStudentsListAction error:', error);
+    return [];
+  }
+}
+
+export async function importStudentsCsvAction(
+  students: Array<{
+    username: string;
+    password?: string;
+    full_name: string;
+    student_id?: string;
+    grade_level?: string;
+    room?: string;
+  }>
+): Promise<CsvImportResult> {
+  const result: CsvImportResult = {
+    success: true,
+    message: '',
+    total_rows: students.length,
+    inserted_count: 0,
+    skipped_count: 0,
+    duplicates: [],
+    errors: [],
+  };
+
+  try {
+    // ดึง username และ student_id ที่มีอยู่แล้วในระบบทั้งหมดมาตรวจสอบความซ้ำซ้อน
+    const existingRes = await query(`SELECT LOWER(username) as username, student_id FROM public.profiles WHERE role = 'STUDENT';`);
+    const existingUsernames = new Set(existingRes.rows.map(r => r.username?.toLowerCase().trim()).filter(Boolean));
+    const existingStudentIds = new Set(existingRes.rows.map(r => r.student_id?.trim()).filter(Boolean));
+
+    const seenInBatch = new Set<string>();
+
+    for (let i = 0; i < students.length; i++) {
+      const s = students[i];
+      const cleanUsername = (s.username || s.student_id || '').trim();
+      const cleanStudentId = (s.student_id || s.username || '').trim();
+      const cleanName = (s.full_name || '').trim();
+      const cleanPassword = (s.password || '1234').trim();
+      const grade = (s.grade_level || 'ม.5').trim();
+      const room = (s.room || '1').trim();
+
+      if (!cleanUsername && !cleanName) {
+        continue;
+      }
+
+      if (!cleanName) {
+        result.errors.push(`แถวที่ ${i + 1}: ขาดชื่อ-นามสกุล`);
+        result.skipped_count++;
+        continue;
+      }
+
+      const lowerUser = cleanUsername.toLowerCase();
+
+      // ตรวจสอบความซ้ำซ้อน ทั้งในฐานข้อมูล และในไฟล์ชุดเดียวกัน
+      if (
+        (lowerUser && existingUsernames.has(lowerUser)) ||
+        (cleanStudentId && existingStudentIds.has(cleanStudentId)) ||
+        seenInBatch.has(lowerUser)
+      ) {
+        result.duplicates.push(`${cleanUsername} (${cleanName})`);
+        result.skipped_count++;
+        continue;
+      }
+
+      seenInBatch.add(lowerUser);
+
+      // บันทึกลงฐานข้อมูล Supabase
+      const insertRes = await query(
+        `
+        INSERT INTO public.profiles (
+          role, full_name, username, student_id, password, grade_level, room, status, created_at, updated_at
+        ) VALUES ('STUDENT', $1, $2, $3, $4, $5, $6, 'ACTIVE', NOW(), NOW())
+        RETURNING id;
+        `,
+        [
+          cleanName,
+          cleanUsername,
+          cleanStudentId,
+          cleanPassword,
+          grade,
+          room,
+        ]
+      );
+
+      if (insertRes.rowCount && insertRes.rowCount > 0) {
+        const newId = insertRes.rows[0].id;
+        // กำหนดคะแนนเริ่มต้น 0
+        await query(
+          `INSERT INTO public.user_scores (user_id, total_points, updated_at) VALUES ($1, 0, NOW()) ON CONFLICT (user_id) DO NOTHING;`,
+          [newId]
+        );
+        result.inserted_count++;
+        existingUsernames.add(lowerUser);
+        if (cleanStudentId) existingStudentIds.add(cleanStudentId);
+      }
+    }
+
+    // บันทึก audit log
+    await query(
+      `
+      INSERT INTO public.audit_logs (action, entity_type, details, created_at)
+      VALUES ('STUDENTS_CSV_IMPORTED', 'profiles', $1, NOW())
+      `,
+      [
+        JSON.stringify({
+          total_rows: result.total_rows,
+          inserted: result.inserted_count,
+          skipped: result.skipped_count,
+        })
+      ]
+    ).catch(() => {});
+
+    result.success = true;
+    result.message = `นำเข้าสำเร็จ ${result.inserted_count} บัญชี (ข้ามรายการซ้ำหรือไม่สมบูรณ์ ${result.skipped_count} รายการ)`;
+    return result;
+  } catch (error) {
+    console.error('importStudentsCsvAction error:', error);
+    result.success = false;
+    result.message = 'เกิดข้อผิดพลาดในการนำเข้าข้อมูลลงฐานข้อมูล';
+    return result;
+  }
+}
+
+export async function deleteStudentAction(id: string): Promise<boolean> {
+  try {
+    await query(`DELETE FROM public.user_scores WHERE user_id = $1;`, [id]);
+    await query(`DELETE FROM public.profiles WHERE id = $1 AND role = 'STUDENT';`, [id]);
+    return true;
+  } catch (error) {
+    console.error('deleteStudentAction error:', error);
+    return false;
   }
 }
 

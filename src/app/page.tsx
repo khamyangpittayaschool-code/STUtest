@@ -85,14 +85,13 @@ export default function HomePage() {
           setErrorMsg('Username หรือรหัสผ่านไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ');
         }
       } else {
-        // นักเรียน: ค้นหาจากฐานข้อมูล Supabase
-        const student = await loginStudentAction(loginUsername.trim());
+        // นักเรียน: ค้นหาจากฐานข้อมูล Supabase พร้อมตรวจสอบรหัสผ่าน
+        const student = await loginStudentAction(loginUsername.trim(), loginPassword.trim());
         if (student) {
           setCurrentStudentSession(student);
           router.push('/student');
         } else {
-          // ถ้ายังไม่มี username ในระบบ ให้เข้าใช้งานเป็นนักเรียนทั่วไป
-          router.push('/student');
+          setErrorMsg('ไม่พบบัญชีผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง (รหัสผ่านเริ่มต้นคือ 1234)');
         }
       }
     } catch {

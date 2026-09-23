@@ -16,8 +16,34 @@ export interface Profile {
   organization?: string;
   avatar_url?: string;
   status: UserStatus;
+  password?: string;
+  last_login_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface StudentManagementItem {
+  id: string;
+  username: string;
+  student_id: string;
+  full_name: string;
+  grade_level: string;
+  room: string;
+  status: string;
+  total_points: number;
+  password?: string;
+  last_login_at?: string | null;
+  created_at: string;
+}
+
+export interface CsvImportResult {
+  success: boolean;
+  message: string;
+  total_rows: number;
+  inserted_count: number;
+  skipped_count: number;
+  duplicates: string[];
+  errors: string[];
 }
 
 export interface Group {

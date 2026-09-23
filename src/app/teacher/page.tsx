@@ -8,6 +8,7 @@ import { LeaderboardWidget } from '@/components/gamification/LeaderboardWidget';
 import { SingleCodeGenerator } from '@/components/gamification/SingleCodeGenerator';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal';
+import { StudentManagementSection } from '@/components/teacher/StudentManagementSection';
 import {
   FeedPost,
   SubmissionItem,
@@ -22,13 +23,14 @@ import {
 import {
   School, LayoutDashboard, Megaphone, CheckCircle2, Clock, FileText,
   Check, Edit3, Plus, ExternalLink, Trash2, Pin, MessageSquare,
-  Trophy, Send, ChevronRight, BarChart3, Filter
+  Trophy, Send, ChevronRight, BarChart3, Filter, Users
 } from 'lucide-react';
 
-type Section = 'dashboard' | 'posts' | 'grade' | 'codes' | 'leaderboard';
+type Section = 'dashboard' | 'posts' | 'grade' | 'codes' | 'leaderboard' | 'students';
 
 const NAV_ITEMS = [
   { key: 'dashboard' as Section, label: 'แดชบอร์ดภาพรวม', icon: LayoutDashboard },
+  { key: 'students' as Section, label: 'จัดการนักเรียน (CSV)', icon: Users },
   { key: 'posts' as Section, label: 'โพสต์ / ประกาศ', icon: Megaphone },
   { key: 'grade' as Section, label: 'ระบบตรวจงาน', icon: CheckCircle2 },
   { key: 'codes' as Section, label: 'สุ่มรหัสคะแนน', icon: BarChart3 },
@@ -701,6 +703,11 @@ export default function TeacherDashboardPage() {
             </div>
             <LeaderboardWidget />
           </div>
+        )}
+
+        {/* ═══ 6. จัดการบัญชีนักเรียน (CSV) ══════════════════════════════════════ */}
+        {activeSection === 'students' && (
+          <StudentManagementSection />
         )}
       </main>
 
