@@ -22,11 +22,12 @@ import {
   gradeSubmissionAction,
   getAssignmentsAction,
 } from '@/lib/actions';
+import { getEmbedPreviewUrl } from '@/lib/utils';
 import {
   School, LayoutDashboard, Megaphone, CheckCircle2, Clock, FileText,
   Check, Edit3, Plus, ExternalLink, Trash2, Pin, MessageSquare,
   Trophy, Send, ChevronRight, BarChart3, Filter, Users, Eye, EyeOff,
-  Maximize2, Copy, BookOpen, Layers, Globe, X
+  Maximize2, Copy, BookOpen, Layers, Globe, X, AlertCircle
 } from 'lucide-react';
 
 type Section = 'dashboard' | 'posts' | 'grade' | 'codes' | 'leaderboard' | 'students';
@@ -754,6 +755,7 @@ export default function TeacherDashboardPage() {
                     {selectedSub.linkUrl && (
                       (() => {
                         const safeUrl = ensureHttpUrl(selectedSub.linkUrl);
+                        const embedUrl = getEmbedPreviewUrl(safeUrl);
                         const isImg = isImageUrl(safeUrl);
                         const ytEmbed = getYoutubeEmbedUrl(safeUrl);
 
@@ -852,23 +854,26 @@ export default function TeacherDashboardPage() {
                                         คลิกที่ชิ้นงานเพื่อเลื่อนดู
                                       </span>
                                     </div>
-                                    <div className="relative h-[360px] w-full bg-white">
+                                    <div className="relative h-[380px] w-full bg-white">
                                       <iframe
-                                        src={safeUrl}
+                                        src={embedUrl}
                                         title="Work Preview Frame"
                                         className="w-full h-full border-0"
-                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-storage-access-by-user-activation allow-presentation allow-downloads"
                                       />
                                     </div>
-                                    <div className="bg-slate-50 px-3 py-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-                                      <span>* หากเว็บไซต์ปลายทาง (เช่น Google Drive หรือ Canva) จำกัดการฝังหน้าจอ ให้กดปุ่ม <strong>"เปิดดูในแท็บใหม่"</strong> ด้านบน</span>
+                                    <div className="bg-slate-50 px-3.5 py-2.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-2">
+                                      <div className="flex items-center gap-1.5 text-slate-600">
+                                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        <span>* หากพรีวิวขึ้นว่า <strong>"ต้องมีสิทธิ์เข้าถึง"</strong> ให้คลิกปุ่ม <strong>"เปิดดูในแท็บใหม่"</strong> ด้านบน หรือให้นักเรียนแชร์ไฟล์เป็น <em>"ทุกคนที่มีลิงก์ (Anyone with the link)"</em></span>
+                                      </div>
                                       <a
                                         href={safeUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-brand-600 font-bold hover:underline flex items-center gap-1 shrink-0 ml-2"
                                       >
-                                        <ExternalLink className="w-3 h-3" /> เปิดเต็มจอ
+                                        <ExternalLink className="w-3 h-3" /> เปิดดูในแท็บใหม่
                                       </a>
                                     </div>
                                   </div>
@@ -935,10 +940,10 @@ export default function TeacherDashboardPage() {
                               </div>
                             ) : (
                               <iframe
-                                src={ensureHttpUrl(selectedSub.linkUrl)}
+                                src={getEmbedPreviewUrl(selectedSub.linkUrl)}
                                 title="Full Preview Frame"
                                 className="w-full h-full border-0"
-                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-storage-access-by-user-activation allow-presentation allow-downloads"
                               />
                             )}
                           </div>
