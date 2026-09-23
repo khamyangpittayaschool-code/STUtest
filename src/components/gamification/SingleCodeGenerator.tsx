@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { generateSingleCodeAction, getAllCodesAction } from '@/lib/actions';
+import { generateSingleCodeAction, getAllCodesAction, deleteCodeAction } from '@/lib/actions';
 import { ActivityCode } from '@/types/database';
-import { Dices, Sparkles, ShieldCheck, Copy, Check, Eye, Trash2, Flame } from 'lucide-react';
+import { Dices, Sparkles, ShieldCheck, Copy, Check, Eye, Trash2, Flame, RefreshCw } from 'lucide-react';
 
 interface SingleCodeGeneratorProps {
   onCodeGenerated?: (code: ActivityCode) => void;
@@ -17,11 +17,22 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
   const [currentCode, setCurrentCode] = useState<ActivityCode | null>(null);
   const [copied, setCopied] = useState(false);
   const [activeCodes, setActiveCodes] = useState<ActivityCode[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshActiveCodes = async () => {
     try {
       const all = await getAllCodesAction();
-      setActiveCodes(all.filter((c) => c.status === 'ACTIVE'));
+      const active = all.filter((c) => c.status === 'ACTIVE');
+      setActiveCodes(active);
+
+      setCurrentCode((prev) => {
+        // ถ้ารหัสปัจจุบันยังอยู่ใน active ให้อยู่ต่อ
+        if (prev && active.some((c) => c.id === prev.id)) {
+          return active.find((c) => c.id === prev.id) || prev;
+        }
+        // ถ้ายังไม่มีรหัสฉาย หรือรหัสเดิมถูกใช้ไปแล้ว ให้ดึงรหัสแรกสุดในฐานข้อมูลมาแสดงทันที
+        return active.length > 0 ? active[0] : null;
+      });
     } catch (e) {
       console.error(e);
     }
@@ -29,7 +40,15 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
 
   useEffect(() => {
     refreshActiveCodes();
+    const interval = setInterval(refreshActiveCodes, 2500);
+    return () => clearInterval(interval);
   }, []);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshActiveCodes();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const handleGenerate = async () => {
     try {
@@ -54,12 +73,19 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDeleteCode = async (id: string, codeStr: string) => {
+    if (!confirm(`ต้องการลบรหัส ${codeStr} ออกจากระบบหรือไม่?`)) return;
+    await deleteCodeAction(id);
+    await refreshActiveCodes();
+  };
+
   return (
-    <Card className="bg-gradient-to-br from-white via-amber-50/30 to-orange-50/40 border-2 border-orange-200/80 shadow-md p-5 rounded-2xl relative overflow-hidden">
+    <Card className="bg-gradient-to-br from-white via-amber-50/30 to-orange-50/40 border-2 border-orange-200/80 shadow-md p-5 rounded-2xl relative overflow-hidden space-y-4">
       {/* Background Decorative Blob */}
       <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-orange-200/30 rounded-full blur-2xl pointer-events-none" />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-orange-100 pb-4 mb-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-orange-100 pb-4">
         <div>
           <div className="flex items-center gap-2">
             <Badge variant="amber" className="gap-1 text-xs px-2.5 py-0.5">
@@ -117,14 +143,14 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
       {/* Main Display Box */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         {/* Giant Code Display */}
-        <div className="md:col-span-8 flex flex-col items-center justify-center p-6 bg-white/90 border-2 border-dashed border-orange-300 rounded-2xl shadow-inner text-center relative">
+        <div className="md:col-span-8 flex flex-col items-center justify-center p-6 bg-white/90 border-2 border-dashed border-orange-300 rounded-2xl shadow-inner text-center relative min-h-[200px]">
           {currentCode ? (
             <>
               <div className="flex items-center justify-center gap-2 text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">
                 <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
                 รหัสสะสมคะแนนสด (+{currentCode.points} คะแนน)
               </div>
-              <div className="text-4xl sm:text-6xl font-black font-mono tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 py-2 select-all drop-shadow-xs">
+              <div className="text-5xl sm:text-7xl font-black font-mono tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 py-2 select-all drop-shadow-xs">
                 {currentCode.code.split('').join(' ')}
               </div>
               <p className="text-xs text-slate-500 mt-2 flex items-center justify-center gap-1">
@@ -135,7 +161,7 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
                   onClick={handleCopy}
                   variant="outline"
                   size="sm"
-                  className="text-xs border-orange-200 hover:bg-orange-50 gap-1.5 text-orange-700"
+                  className="text-xs border-orange-200 hover:bg-orange-50 gap-1.5 text-orange-700 font-bold"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'คัดลอกเรียบร้อย' : 'คัดลอกรหัส'}</span>
@@ -145,7 +171,7 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
           ) : (
             <div className="py-6 text-center">
               <Dices className="w-12 h-12 text-orange-300 mx-auto mb-2 animate-bounce" />
-              <p className="text-sm font-bold text-slate-700">ยังไม่มีการสุ่มรหัสสด</p>
+              <p className="text-sm font-bold text-slate-700">ไม่มีรหัสรอใช้งานในระบบ</p>
               <p className="text-xs text-slate-500 mt-1">กดปุ่ม "สุ่มรหัสสด 1 รหัส" ด้านขวา เพื่อเริ่มแจกคะแนน</p>
             </div>
           )}
@@ -165,9 +191,19 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
             <span className="text-xs font-normal opacity-90">({selectedPoints} คะแนน • ลบทันทีเมื่อใช้)</span>
           </Button>
 
-          <div className="bg-orange-100/60 rounded-xl p-3 border border-orange-200/60 text-xs text-orange-950 space-y-1">
+          <div className="bg-orange-100/60 rounded-xl p-3 border border-orange-200/60 text-xs text-orange-950 space-y-1.5">
             <div className="font-bold flex items-center justify-between text-orange-900">
-              <span>⚡ รหัสที่รอใช้งานในระบบ:</span>
+              <span className="flex items-center gap-1.5">
+                <span>⚡ รหัสที่รอใช้งานในระบบ:</span>
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  className="text-orange-600 hover:text-orange-800 p-0.5"
+                  title="รีเฟรชข้อมูลจากฐานข้อมูล"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </span>
               <Badge variant="amber" className="text-xs px-2 py-0 font-bold">
                 {activeCodes.length} รหัส
               </Badge>
@@ -178,6 +214,60 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
           </div>
         </div>
       </div>
+
+      {/* รายการรหัสทั้งหมดที่รอใช้งานในฐานข้อมูล */}
+      {activeCodes.length > 0 && (
+        <div className="pt-3 border-t border-orange-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📋 รายการรหัสที่รอใช้งานในฐานข้อมูล ({activeCodes.length} รหัส):</span>
+            </span>
+            <span className="text-[11px] text-slate-500">คลิกที่รหัสเพื่อฉายขึ้นจอ หรือกดลบ</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeCodes.map((codeItem) => {
+              const isSelected = currentCode?.id === codeItem.id;
+              return (
+                <div
+                  key={codeItem.id}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs transition-all ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-600 shadow-sm font-black ring-2 ring-orange-300'
+                      : 'bg-white text-slate-700 border-orange-200 hover:border-orange-400 hover:bg-orange-50/50'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCurrentCode(codeItem)}
+                    className="flex items-center gap-1.5 font-mono tracking-wider cursor-pointer"
+                    title="คลิกเพื่อฉายรหัสนี้ขึ้นจอใหญ่"
+                  >
+                    <span className="text-sm font-bold">{codeItem.code}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-md font-semibold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-800'
+                      }`}
+                    >
+                      +{codeItem.points} แต้ม
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCode(codeItem.id, codeItem.code)}
+                    className={`ml-1 p-0.5 rounded hover:text-red-600 transition-colors cursor-pointer ${
+                      isSelected ? 'text-white/80 hover:text-white' : 'text-slate-400'
+                    }`}
+                    title="ลบรหัสนี้ออกจากฐานข้อมูล"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
+
