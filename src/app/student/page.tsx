@@ -38,11 +38,26 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+import { Profile } from '@/types/database';
+
+const DEFAULT_STUDENT: Profile = {
+  id: 'u-guest',
+  role: 'STUDENT',
+  full_name: 'นักเรียน',
+  username: 'student',
+  student_id: '-',
+  grade_level: 'ม.5',
+  room: '1',
+  status: 'ACTIVE',
+  created_at: '',
+  updated_at: '',
+};
+
 export default function StudentDashboardPage() {
   const [activeTab, setActiveTab] = useState<'code' | 'tasks' | 'feed' | 'ranks'>('code');
-  const [currentStudent, setCurrentStudent] = useState(getCurrentStudent());
+  const [currentStudent, setCurrentStudent] = useState<Profile>(DEFAULT_STUDENT);
   const [dashboardData, setDashboardData] = useState({
-    profile: currentStudent,
+    profile: DEFAULT_STUDENT,
     individualScore: 0,
     userRank: '-',
   });
@@ -69,6 +84,8 @@ export default function StudentDashboardPage() {
   };
 
   useEffect(() => {
+    const student = getCurrentStudent();
+    setCurrentStudent(student);
     syncData();
     const timer = setInterval(syncData, 2500);
     return () => clearInterval(timer);
