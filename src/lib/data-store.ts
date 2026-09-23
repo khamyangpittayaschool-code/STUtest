@@ -77,259 +77,159 @@ export interface AssignmentItem {
   submitted_at?: string;
 }
 
-// 1. In-memory Profiles
+export interface SubmissionItem {
+  id: string;
+  assignmentId?: string;
+  studentName: string;
+  studentId: string;
+  classroom: string;
+  submittedAt: string;
+  status: 'SUBMITTED' | 'GRADED';
+  score?: number;
+  maxScore: number;
+  feedback?: string;
+  content: string;
+  linkUrl: string;
+  files: string[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// สะอาดและพร้อมใช้งานจริง (Cleared Mock Data)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1. Profiles (เริ่มต้นมีเฉพาะบัญชีครูผู้สอน)
 let currentProfiles: Profile[] = [
-  {
-    id: 'u-student-1',
-    role: 'STUDENT',
-    full_name: 'นายกิตติศักดิ์ พัฒนศิลป์',
-    email: 'kittisak.ai@school.ac.th',
-    username: 'kittisak67',
-    student_id: '6701001',
-    grade_level: 'ม.5',
-    room: '1',
-    academic_year: '2569',
-    status: 'ACTIVE',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
   {
     id: 'u-teacher-1',
     role: 'TEACHER',
-    full_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    email: 'chookiat@school.ac.th',
-    username: 'chookiat_ai',
-    teacher_position: 'ครูชำนาญการพิเศษ',
-    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-    organization: 'โรงเรียนตัวอย่างวิทยา',
-    status: 'ACTIVE',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'u-admin-1',
-    role: 'SUPER_ADMIN',
-    full_name: 'ผู้ดูแลระบบ AI Training (Super Admin)',
+    full_name: 'ครูผู้สอน',
     email: 'admin@school.ac.th',
-    username: 'superadmin',
+    username: 'admin',
+    teacher_position: 'ครูผู้สอน',
+    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
     status: 'ACTIVE',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
 ];
 
-// 2. Groups
-let currentGroups: Group[] = [
-  {
-    id: 'g-001',
-    name: 'AI Genius (อัจฉริยะ AI)',
-    description: 'กลุ่มศึกษาและประยุกต์ใช้ Generative AI สำหรับนวัตกรรมการเรียนรู้',
+// นักเรียนที่ล็อกอินอยู่ในเซสชันปัจจุบัน
+let currentActiveStudent: Profile | null = null;
+
+// 2. Activity Codes (สระรหัสสุ่ม)
+let currentCodes: ActivityCode[] = [];
+
+// 3. User Scores
+let userScoresRecord: Record<string, number> = {};
+
+// 4. Assignments & Submissions
+let currentAssignments: AssignmentItem[] = [];
+let currentSubmissions: SubmissionItem[] = [];
+
+// 5. Notifications
+let currentNotifications: NotificationItem[] = [];
+
+// 6. Audit Logs
+let currentAuditLogs: AuditLogItem[] = [];
+
+// 7. Feed Posts
+let currentPosts: FeedPost[] = [];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function registerStudentInStore(data: {
+  fullName: string;
+  studentId?: string;
+  gradeLevel: string;
+  room: string;
+  username: string;
+}): Profile {
+  const newStudent: Profile = {
+    id: `u-stu-${Date.now()}`,
+    role: 'STUDENT',
+    full_name: data.fullName,
+    username: data.username,
+    student_id: data.studentId || `${Date.now()}`.slice(-6),
+    grade_level: data.gradeLevel,
+    room: data.room,
     status: 'ACTIVE',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'g-002',
-    name: 'Prompt Master (เซียนสั่ง AI)',
-    description: 'เน้นการเขียน Prompt ขั้นสูงสำหรับ Gemini และ Claude',
-    status: 'ACTIVE',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'g-003',
-    name: 'AI Innovators (นักประดิษฐ์ AI)',
-    description: 'เน้นการทำสื่อและมัลติมีเดียด้วยเครื่องมือ AI',
-    status: 'ACTIVE',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }
-];
+  };
 
-// 3. Activity
-let currentActivity: Activity = {
-  id: 'a0000000-0000-0000-0000-000000000001',
-  title: 'อบรมการประยุกต์ใช้ AI ในการเรียนรู้และการสร้างสรรค์',
-  description: 'การประยุกต์ใช้ Gemini, ChatGPT, Claude และ NotebookLM เพื่อการศึกษา',
-  cover_image_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
-  start_date: '2026-09-26T08:30:00+07:00',
-  end_date: '2026-09-26T16:30:00+07:00',
-  status: 'ACTIVE',
-  allow_submissions: true,
-  enable_scoring: true,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-};
+  currentProfiles.push(newStudent);
+  userScoresRecord[newStudent.id] = 0;
+  currentActiveStudent = newStudent;
 
-// 4. Activity Codes (เริ่มต้นมีรหัสเดี่ยวสำหรับทดสอบ)
-let currentCodes: ActivityCode[] = [
-  { id: 'c-01', batch_id: 'b-01', activity_id: currentActivity.id, code: 'K7X2M', points: 10, status: 'ACTIVE', created_at: new Date().toISOString() },
-  { id: 'c-02', batch_id: 'b-01', activity_id: currentActivity.id, code: 'Q9R4Z', points: 10, status: 'ACTIVE', created_at: new Date().toISOString() },
-  { id: 'c-03', batch_id: 'b-01', activity_id: currentActivity.id, code: 'VJ3P8', points: 10, status: 'ACTIVE', created_at: new Date().toISOString() },
-];
-
-// 5. Scores
-let userScoresRecord: Record<string, number> = {
-  'u-student-1': 120,
-  'u-student-2': 180,
-  'u-student-3': 150,
-  'u-student-4': 90,
-  'u-student-5': 60,
-};
-
-let groupScoresRecord: Record<string, number> = {
-  'g-001': 450,
-  'g-002': 380,
-  'g-003': 310,
-};
-
-// 6. Assignments
-let currentAssignments: AssignmentItem[] = [
-  {
-    id: 'assign-1',
-    title: 'งานที่ 1: สร้างภาพและสื่อประชาสัมพันธ์ด้วย AI',
-    description: 'สร้างภาพด้วย Gemini Imagen หรือ Canva AI พร้อมระบุ Prompt ที่ใช้และอธิบายแนวคิดในการออกแบบ',
-    max_score: 20,
-    due_date: '26/09/2569 16:00 น.',
-    status: 'ACTIVE',
-    created_at: 'วันนี้ 09:30 น.',
-    teacher_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    submitted: true,
-    submission_status: 'GRADED',
-    score: 18,
-    feedback: 'ผลงานดีมาก มีความคิดสร้างสรรค์และเข้าใจหลักการ Prompting',
-    submitted_at: '26/09/2569 14:32 น.',
-  },
-  {
-    id: 'assign-2',
-    title: 'งานที่ 2: สรุปงานวิจัยและทำเอกสารด้วย NotebookLM',
-    description: 'อัปโหลดบทความวิจัยหรือเนื้อหาบทเรียนเข้า NotebookLM แล้วสร้างสรุปสาระสำคัญ 5 ข้อ พร้อมลิงก์ Audio Overview',
-    max_score: 25,
-    due_date: '26/09/2569 17:30 น.',
-    status: 'ACTIVE',
-    created_at: 'วันนี้ 11:00 น.',
-    teacher_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    submitted: true,
-    submission_status: 'SUBMITTED',
-    submitted_at: '26/09/2569 15:10 น.',
-  },
-  {
-    id: 'assign-3',
-    title: 'งานที่ 3: ออกแบบ Chatbot Prompt สำหรับช่วยเรียนรู้',
-    description: 'ออกแบบ System Prompt สำหรับสั่ง ChatGPT หรือ Claude ให้ทำหน้าที่เป็น Tutor สอนวิชาที่คุณสนใจ โดยมีเงื่อนไขให้ถามตอบทีละขั้น',
-    max_score: 15,
-    due_date: '27/09/2569 12:00 น.',
-    status: 'ACTIVE',
-    created_at: 'วันนี้ 13:00 น.',
-    teacher_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    submitted: false,
-    submission_status: undefined,
-  },
-];
-
-// 7. Notifications
-let currentNotifications: NotificationItem[] = [
-  {
-    id: 'n-01',
-    title: '🎯 คุณได้รับ 10 คะแนน',
-    message: 'ยินดีด้วย! คุณได้รับ 10 คะแนนจากการทำภารกิจช่วงเช้า',
-    type: 'SCORE',
-    is_read: false,
-    created_at: '10 นาทีที่แล้ว',
-  },
-  {
-    id: 'n-02',
-    title: '📝 ครูตรวจงานของคุณแล้ว',
-    message: 'งานที่ 1: สร้างภาพด้วย AI ได้รับ 18/20 คะแนน พร้อม Feedback',
-    type: 'GRADE',
-    is_read: false,
-    created_at: '30 นาทีที่แล้ว',
-  },
-  {
-    id: 'n-03',
-    title: '📢 มีประกาศใหม่',
-    message: 'วิทยากรได้โพสต์สรุปแนวทางการเขียน Prompt สำหรับ NotebookLM',
-    type: 'POST',
-    is_read: false,
-    created_at: '1 ชั่วโมงที่แล้ว',
-  }
-];
-
-// 8. Audit Logs
-let currentAuditLogs: AuditLogItem[] = [
-  {
-    id: 'log-01',
+  currentAuditLogs.unshift({
+    id: `log-${Date.now()}`,
     action: 'USER_REGISTERED',
     entity_type: 'profiles',
-    user_name: 'นายกิตติศักดิ์ พัฒนศิลป์',
-    details: { role: 'STUDENT', student_id: '6701001' },
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: 'log-04',
-    action: 'SUBMISSION_GRADED',
-    entity_type: 'submissions',
-    user_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    details: { score: 18, max_score: 20, student: 'นายกิตติศักดิ์' },
-    created_at: new Date(Date.now() - 1800000).toISOString(),
-  }
-];
+    user_name: newStudent.full_name,
+    details: { role: 'STUDENT', username: newStudent.username },
+    created_at: new Date().toISOString(),
+  });
 
-// 9. Feed Posts
-let currentPosts: FeedPost[] = [
-  {
-    id: 'post-1',
-    title: '📢 ประกาศกิจกรรมอบรม AI รอบที่ 1: กำหนดการและภารกิจ',
-    content: 'ขอต้อนรับนักเรียนทุกคนเข้าสู่กิจกรรมอบรมการประยุกต์ใช้เทคโนโลยีปัญญาประดิษฐ์ (Generative AI: Gemini, ChatGPT, Claude และ NotebookLM) ในช่วงเช้าเราจะเรียนรู้การตั้งโจทย์และสร้างสรรค์ภาพด้วย AI จากนั้นจะมีรหัสลับแจกในห้องสำหรับสะสมคะแนนกลุ่ม!',
-    post_type: 'ANNOUNCEMENT',
-    author_name: 'อาจารย์ชูเกียรติ มงคลชัย',
-    author_role: 'วิทยากร / ครูผู้สอน',
-    is_pinned: true,
-    allow_comment: true,
-    created_at: 'วันนี้ 09:00 น.',
-    reactions: { heart: 28, like: 14, party: 9, idea: 12 },
-    comments: []
-  }
-];
+  return newStudent;
+}
 
-// Functions
+export function getCurrentStudent(): Profile {
+  if (currentActiveStudent) return currentActiveStudent;
+  const firstStudent = currentProfiles.find(p => p.role === 'STUDENT');
+  if (firstStudent) return firstStudent;
+
+  return {
+    id: 'u-guest',
+    role: 'STUDENT',
+    full_name: 'นักเรียน',
+    username: 'student',
+    student_id: '-',
+    grade_level: 'ม.5',
+    room: '1',
+    status: 'ACTIVE',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export function setCurrentStudentSession(profile: Profile) {
+  currentActiveStudent = profile;
+}
+
 export function getSystemOverview() {
   const usedCodesCount = currentCodes.filter(c => c.status === 'USED').length;
   const activeCodesCount = currentCodes.filter(c => c.status === 'ACTIVE').length;
+  const students = currentProfiles.filter(p => p.role === 'STUDENT');
+  const teachers = currentProfiles.filter(p => p.role === 'TEACHER' || p.role === 'SUPER_ADMIN');
   const totalScores = Object.values(userScoresRecord).reduce((a, b) => a + b, 0);
 
   return {
-    totalMembers: currentProfiles.length + 42,
-    studentsCount: 38,
-    teachersCount: 4,
-    groupsCount: currentGroups.length,
+    totalMembers: currentProfiles.length,
+    studentsCount: students.length,
+    teachersCount: teachers.length,
     totalCodes: currentCodes.length,
     usedCodes: usedCodesCount,
     remainingCodes: activeCodesCount,
     totalPointsGiven: totalScores,
-    activity: currentActivity,
   };
 }
 
-export function getStudentDashboardData(userId = 'u-student-1') {
-  const profile = currentProfiles.find(p => p.id === userId) || currentProfiles[0];
-  const userScore = userScoresRecord[userId] || 120;
-  const group = currentGroups[0];
-  const groupScore = groupScoresRecord[group.id] || 450;
+export function getStudentDashboardData(userId?: string) {
+  const profile = userId
+    ? currentProfiles.find(p => p.id === userId) || getCurrentStudent()
+    : getCurrentStudent();
 
+  const userScore = userScoresRecord[profile.id] || 0;
   const allUserScores = Object.values(userScoresRecord).sort((a, b) => b - a);
-  const userRank = allUserScores.indexOf(userScore) + 1 || 5;
-
-  const allGroupScores = Object.values(groupScoresRecord).sort((a, b) => b - a);
-  const groupRank = allGroupScores.indexOf(groupScore) + 1 || 1;
+  const userRankIndex = allUserScores.indexOf(userScore);
+  const userRank = userRankIndex >= 0 && userScore > 0 ? `#${userRankIndex + 1}` : '-';
 
   return {
     profile,
     individualScore: userScore,
-    userRank: `#${userRank}`,
-    group,
-    groupScore,
-    groupRank: `#${groupRank}`,
+    userRank,
   };
 }
 
@@ -337,16 +237,64 @@ export function getAssignments(): AssignmentItem[] {
   return [...currentAssignments];
 }
 
+export function addAssignment(assignment: Omit<AssignmentItem, 'id' | 'created_at' | 'submitted'>): AssignmentItem {
+  const item: AssignmentItem = {
+    ...assignment,
+    id: `assign-${Date.now()}`,
+    created_at: 'เมื่อสักครู่',
+    submitted: false,
+  };
+  currentAssignments.unshift(item);
+  return item;
+}
+
 export function submitAssignmentStore(assignmentId: string, content: string, linkUrl: string, isDraft = false) {
+  const student = getCurrentStudent();
   const assign = currentAssignments.find(a => a.id === assignmentId);
+
   if (assign) {
     assign.submitted = !isDraft;
     assign.submission_status = isDraft ? 'DRAFT' : 'SUBMITTED';
-    assign.submitted_at = new Date().toLocaleTimeString('th-TH') + ' น.';
+    assign.submitted_at = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+  }
+
+  if (!isDraft) {
+    const newSub: SubmissionItem = {
+      id: `sub-${Date.now()}`,
+      assignmentId,
+      studentName: student.full_name,
+      studentId: student.student_id || '-',
+      classroom: `ม.${student.grade_level?.replace('ม.', '') || '5'}/${student.room || '1'}`,
+      submittedAt: new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
+      status: 'SUBMITTED',
+      maxScore: assign ? assign.max_score : 20,
+      content,
+      linkUrl,
+      files: [],
+    };
+    currentSubmissions.unshift(newSub);
   }
 }
 
-// 🎲 สุ่มทีละรหัส (Single Code Generator - Prompt Requirement)
+export function getSubmissions(): SubmissionItem[] {
+  return [...currentSubmissions];
+}
+
+export function gradeSubmissionInStore(submissionId: string, score: number, feedback: string) {
+  const sub = currentSubmissions.find(s => s.id === submissionId);
+  if (sub) {
+    sub.status = 'GRADED';
+    sub.score = score;
+    sub.feedback = feedback;
+
+    const student = currentProfiles.find(p => p.student_id === sub.studentId || p.full_name === sub.studentName);
+    if (student) {
+      userScoresRecord[student.id] = (userScoresRecord[student.id] || 0) + score;
+    }
+  }
+}
+
+// 🎲 สุ่มทีละรหัส (Single Code Generator)
 export function generateSingleCodeInStore(points: number = 10, batchName = 'สุ่มรหัสสดในห้องเรียน'): ActivityCode {
   const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -354,36 +302,39 @@ export function generateSingleCodeInStore(points: number = 10, batchName = 'ส�
     code += charset.charAt(Math.floor(Math.random() * charset.length));
   }
 
-  const item: ActivityCode = {
-    id: `single-${Date.now()}`,
-    batch_id: `single-batch-${Date.now()}`,
-    activity_id: currentActivity.id,
+  const newCode: ActivityCode = {
+    id: `code-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    batch_id: `batch-${Date.now()}`,
+    activity_id: 'act-01',
     code,
     points,
     status: 'ACTIVE',
     created_at: new Date().toISOString(),
   };
 
-  currentCodes.unshift(item);
+  currentCodes.unshift(newCode);
 
   currentAuditLogs.unshift({
     id: `log-${Date.now()}`,
     action: 'SINGLE_CODE_GENERATED',
     entity_type: 'activity_codes',
-    user_name: 'ครูผู้สอน / Admin',
+    user_name: 'ครูผู้สอน',
     details: { code, points, batch: batchName },
     created_at: new Date().toISOString(),
   });
 
-  return item;
+  return newCode;
 }
 
-// ลบรหัสออกจากระบบ (Delete Code Immediately)
+export function getAllCodes(): ActivityCode[] {
+  return [...currentCodes];
+}
+
 export function deleteCodeInStore(codeId: string) {
   currentCodes = currentCodes.filter(c => c.id !== codeId);
 }
 
-export function redeemCodeInStore(code: string, userId = 'u-student-1'): CodeRedemptionResult {
+export function redeemCodeInStore(code: string, userId?: string): CodeRedemptionResult {
   const cleanCode = code.trim().toUpperCase();
   const targetCodeIndex = currentCodes.findIndex(c => c.code === cleanCode);
 
@@ -396,34 +347,23 @@ export function redeemCodeInStore(code: string, userId = 'u-student-1'): CodeRed
 
   const targetCode = currentCodes[targetCodeIndex];
 
-  if (targetCode.status === 'USED') {
-    // ลบออกจากรายการรหัสทันทีตามโจทย์! (หากใช้รหัสนั้นเพิ่มคะแนนแล้วรหัสจะถูกลบทันที)
+  if (targetCode.status === 'USED' || targetCode.status === 'EXPIRED') {
     currentCodes.splice(targetCodeIndex, 1);
     return {
       success: false,
-      message: '⚠️ รหัสนี้ถูกใช้งานและถูกลบออกจากระบบไปแล้ว',
+      message: '⚠️ รหัสนี้ถูกใช้งานหรือหมดอายุไปแล้ว',
     };
   }
 
-  if (targetCode.status === 'EXPIRED') {
-    return {
-      success: false,
-      message: 'รหัสนี้หมดอายุแล้ว',
-    };
-  }
+  const student = userId
+    ? currentProfiles.find(p => p.id === userId) || getCurrentStudent()
+    : getCurrentStudent();
 
-  // เพิ่มคะแนนแก่นักเรียน
-  const prevUser = userScoresRecord[userId] || 0;
+  const prevUser = userScoresRecord[student.id] || 0;
   const pointsToAdd = targetCode.points;
-  const newUser = prevUser + pointsToAdd;
-  userScoresRecord[userId] = newUser;
+  userScoresRecord[student.id] = prevUser + pointsToAdd;
 
-  const groupId = currentGroups[0].id;
-  const prevGroup = groupScoresRecord[groupId] || 0;
-  const newGroup = prevGroup + pointsToAdd;
-  groupScoresRecord[groupId] = newGroup;
-
-  // ลบรหัสออกจาก active pool ทันทีตามที่ผู้ใช้สั่ง ("หากใช้รหัสนั้นเพิ่มคะแนนแล้วรหัสจะถูกลบทันที")
+  // ลบรหัสออกจากระบบทันทีตามเงื่อนไข
   currentCodes.splice(targetCodeIndex, 1);
 
   currentAuditLogs.unshift({
@@ -431,7 +371,7 @@ export function redeemCodeInStore(code: string, userId = 'u-student-1'): CodeRed
     action: 'CODE_REDEEMED_AND_DELETED',
     entity_type: 'activity_codes',
     entity_id: targetCode.id,
-    user_name: 'นายกิตติศักดิ์ พัฒนศิลป์',
+    user_name: student.full_name,
     details: { code: cleanCode, points: pointsToAdd },
     created_at: new Date().toISOString(),
   });
@@ -449,82 +389,28 @@ export function redeemCodeInStore(code: string, userId = 'u-student-1'): CodeRed
     success: true,
     message: `🎉 ถูกต้อง! คุณได้รับ +${pointsToAdd} คะแนน (รหัสถูกลบออกจากระบบแล้ว)`,
     points_added: pointsToAdd,
-    individual_score: {
-      previous: prevUser,
-      current: newUser,
-    },
-    group_score: {
-      has_group: true,
-      previous: prevGroup,
-      current: newGroup,
-    },
   };
 }
 
 export function getLeaderboards(): { userLeaderboard: UserScoreLeaderboard[]; groupLeaderboard: GroupScoreLeaderboard[] } {
-  const userLeaderboard: UserScoreLeaderboard[] = [
-    { user_id: 'u-student-2', full_name: 'นางสาวพิมพ์ชนก รัตนพร', student_id: '6701004', group_name: 'Prompt Master (ม.5/1)', total_points: userScoresRecord['u-student-2'] || 180 },
-    { user_id: 'u-student-3', full_name: 'นายธีรพัฒน์ วรเดช', student_id: '6701012', group_name: 'AI Genius (ม.5/1)', total_points: userScoresRecord['u-student-3'] || 150 },
-    { user_id: 'u-student-1', full_name: 'นายกิตติศักดิ์ พัฒนศิลป์ (คุณ)', student_id: '6701001', group_name: 'AI Genius (ม.5/1)', total_points: userScoresRecord['u-student-1'] || 120 },
-    { user_id: 'u-student-4', full_name: 'นายวชิรวิทย์ สมบูรณ์', student_id: '6701025', group_name: 'AI Innovators (ม.5/2)', total_points: userScoresRecord['u-student-4'] || 90 },
-    { user_id: 'u-student-5', full_name: 'นางสาวธนภรณ์ สุวรรณฉัตร', student_id: '6701031', group_name: 'Prompt Master (ม.5/2)', total_points: userScoresRecord['u-student-5'] || 60 },
-    { user_id: 'u-student-6', full_name: 'นายชินวัตร ปัญญาดี', student_id: '6701035', group_name: 'AI Genius (ม.5/1)', total_points: 55 },
-    { user_id: 'u-student-7', full_name: 'นางสาวกชกร สุขเจริญ', student_id: '6701040', group_name: 'AI Innovators (ม.5/3)', total_points: 50 },
-    { user_id: 'u-student-8', full_name: 'นายปณิธาน มั่นคง', student_id: '6701044', group_name: 'Prompt Master (ม.5/3)', total_points: 45 },
-    { user_id: 'u-student-9', full_name: 'นางสาวสิรินดา วงศ์เทวัญ', student_id: '6701050', group_name: 'AI Genius (ม.5/2)', total_points: 40 },
-    { user_id: 'u-student-10', full_name: 'นายภาณุเดช แสงสว่าง', student_id: '6701055', group_name: 'AI Innovators (ม.5/1)', total_points: 35 },
-    { user_id: 'u-student-11', full_name: 'นางสาววรรณิสา แก้วมณี', student_id: '6701060', group_name: 'Prompt Master (ม.5/2)', total_points: 30 },
-    { user_id: 'u-student-12', full_name: 'นายกฤษดา ทรัพย์เจริญ', student_id: '6701065', group_name: 'AI Genius (ม.5/3)', total_points: 25 },
-    { user_id: 'u-student-13', full_name: 'นางสาวณิชกานต์ รุ่งเรือง', student_id: '6701070', group_name: 'AI Innovators (ม.5/1)', total_points: 20 },
-    { user_id: 'u-student-14', full_name: 'นายธนกฤต เพชรแท้', student_id: '6701075', group_name: 'Prompt Master (ม.5/3)', total_points: 15 },
-    { user_id: 'u-student-15', full_name: 'นางสาวสุพิชชา เลิศรัตน์', student_id: '6701080', group_name: 'AI Genius (ม.5/2)', total_points: 10 },
-  ].sort((a, b) => b.total_points - a.total_points).map((item, index) => ({ ...item, rank: index + 1 }));
+  const students = currentProfiles.filter(p => p.role === 'STUDENT');
 
-  const groupLeaderboard: GroupScoreLeaderboard[] = [
-    { group_id: 'g-001', name: 'AI Genius', member_count: 8, total_points: groupScoresRecord['g-001'] || 450, rank: 1 },
-    { group_id: 'g-002', name: 'Prompt Master', member_count: 7, total_points: groupScoresRecord['g-002'] || 380, rank: 2 },
-    { group_id: 'g-003', name: 'AI Innovators', member_count: 6, total_points: groupScoresRecord['g-003'] || 310, rank: 3 },
-  ].sort((a, b) => b.total_points - a.total_points).map((item, index) => ({ ...item, rank: index + 1 }));
-
-  return { userLeaderboard, groupLeaderboard };
-}
-
-export function generateBulkCodesInStore(quantity: number, points: number, batchName: string): ActivityCode[] {
-  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const newCodes: ActivityCode[] = [];
-
-  for (let i = 0; i < quantity; i++) {
-    let code = '';
-    for (let j = 0; j < 5; j++) {
-      code += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    const item: ActivityCode = {
-      id: `gen-${Date.now()}-${i}`,
-      batch_id: `batch-${Date.now()}`,
-      activity_id: currentActivity.id,
-      code,
-      points,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
+  const userLeaderboard: UserScoreLeaderboard[] = students.map((p) => {
+    const pts = userScoresRecord[p.id] || 0;
+    return {
+      user_id: p.id,
+      full_name: p.full_name,
+      student_id: p.student_id,
+      group_name: `ม.${p.grade_level?.replace('ม.', '') || '5'}/${p.room || '1'}`,
+      total_points: pts,
+      rank: 1,
     };
-    newCodes.push(item);
-    currentCodes.push(item);
-  }
+  }).sort((a, b) => b.total_points - a.total_points).map((item, index) => ({
+    ...item,
+    rank: index + 1,
+  }));
 
-  currentAuditLogs.unshift({
-    id: `log-${Date.now()}`,
-    action: 'CODE_BATCH_CREATED',
-    entity_type: 'code_batches',
-    user_name: 'Super Admin',
-    details: { batch: batchName, quantity, points },
-    created_at: new Date().toISOString(),
-  });
-
-  return newCodes;
-}
-
-export function getAllCodes(): ActivityCode[] {
-  return [...currentCodes];
+  return { userLeaderboard, groupLeaderboard: [] };
 }
 
 export function getPosts(): FeedPost[] {
@@ -540,29 +426,6 @@ export function addPost(newPost: Omit<FeedPost, 'id' | 'created_at' | 'reactions
     comments: [],
   };
   currentPosts.unshift(item);
-
-  if (newPost.post_type === 'ASSIGNMENT') {
-    currentAssignments.unshift({
-      id: `assign-${Date.now()}`,
-      title: newPost.title,
-      description: newPost.content,
-      max_score: 20,
-      due_date: '27/09/2569 16:00 น.',
-      status: 'ACTIVE',
-      created_at: 'เมื่อสักครู่',
-      teacher_name: newPost.author_name,
-      submitted: false,
-    });
-
-    currentNotifications.unshift({
-      id: `notif-${Date.now()}`,
-      title: '📝 มีงานใหม่จากครูผู้สอน',
-      message: `งานใหม่: ${newPost.title}`,
-      type: 'ASSIGNMENT',
-      is_read: false,
-      created_at: 'เมื่อสักครู่',
-    });
-  }
 
   currentAuditLogs.unshift({
     id: `log-${Date.now()}`,
@@ -613,7 +476,7 @@ export function toggleReaction(postId: string, type: 'heart' | 'like' | 'party' 
   }
 }
 
-export function addComment(postId: string, content: string, authorName = 'นายกิตติศักดิ์ พัฒนศิลป์', role = 'นักเรียน') {
+export function addComment(postId: string, content: string, authorName = 'นักเรียน', role = 'นักเรียน') {
   const post = currentPosts.find(p => p.id === postId);
   if (post) {
     const comment: FeedComment = {
@@ -647,52 +510,16 @@ export function getAuditLogs(): AuditLogItem[] {
   return [...currentAuditLogs];
 }
 
-export function adminAdjustScore(userId: string, points: number, reason: string, adminName = 'Super Admin') {
-  const prevUser = userScoresRecord[userId] || 0;
-  const newUser = prevUser + points;
-  userScoresRecord[userId] = newUser;
-
-  const groupId = currentGroups[0].id;
-  const prevGroup = groupScoresRecord[groupId] || 0;
-  const newGroup = prevGroup + points;
-  groupScoresRecord[groupId] = newGroup;
-
-  currentAuditLogs.unshift({
-    id: `log-${Date.now()}`,
-    action: 'SCORE_ADJUSTED',
-    entity_type: 'user_scores',
-    user_name: adminName,
-    details: {
-      target_user: userId,
-      points_adjustment: points,
-      reason,
-      new_user_score: newUser,
-    },
-    created_at: new Date().toISOString(),
-  });
-
-  currentNotifications.unshift({
-    id: `notif-${Date.now()}`,
-    title: points >= 0 ? `🎁 คุณได้รับคะแนนพิเศษ +${points}` : `⚠️ ปรับลดคะแนน ${points}`,
-    message: `เหตุผล: ${reason}`,
-    type: 'SCORE',
-    is_read: false,
-    created_at: 'เมื่อสักครู่',
-  });
-
-  return { success: true, newUserScore: newUser, newGroupScore: newGroup };
-}
-
 export function getAllMembers(): Profile[] {
   return [...currentProfiles];
 }
 
 export function getAllGroups(): Group[] {
-  return [...currentGroups];
+  return [];
 }
 
 export function createNewGroup(name: string, description: string): Group {
-  const newGroup: Group = {
+  return {
     id: `g-${Date.now()}`,
     name,
     description,
@@ -700,18 +527,4 @@ export function createNewGroup(name: string, description: string): Group {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  currentGroups.push(newGroup);
-  groupScoresRecord[newGroup.id] = 0;
-
-  currentAuditLogs.unshift({
-    id: `log-${Date.now()}`,
-    action: 'GROUP_CREATED',
-    entity_type: 'groups',
-    user_name: 'นายกิตติศักดิ์ พัฒนศิลป์',
-    details: { group_name: name },
-    created_at: new Date().toISOString(),
-  });
-
-  return newGroup;
 }
-

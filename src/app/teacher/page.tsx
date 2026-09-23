@@ -7,83 +7,22 @@ import { Button } from '@/components/ui/button';
 import { LeaderboardWidget } from '@/components/gamification/LeaderboardWidget';
 import { SingleCodeGenerator } from '@/components/gamification/SingleCodeGenerator';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
-import { getPosts, deletePost, FeedPost, addComment } from '@/lib/data-store';
+import {
+  getPosts,
+  deletePost,
+  FeedPost,
+  addComment,
+  getSubmissions,
+  gradeSubmissionInStore,
+  SubmissionItem
+} from '@/lib/data-store';
 import {
   School, LayoutDashboard, Megaphone, CheckCircle2, Clock, FileText,
   Check, Edit3, Plus, ExternalLink, Trash2, Pin, MessageSquare,
   Trophy, Send, ChevronRight, BarChart3, Filter
 } from 'lucide-react';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface MockSubmission {
-  id: string;
-  studentName: string;
-  studentId: string;
-  classroom: string;
-  submittedAt: string;
-  status: 'SUBMITTED' | 'GRADED';
-  score?: number;
-  maxScore: number;
-  feedback?: string;
-  content: string;
-  linkUrl: string;
-  files: string[];
-}
-
 type Section = 'dashboard' | 'posts' | 'grade' | 'codes' | 'leaderboard';
-
-const INITIAL_SUBMISSIONS: MockSubmission[] = [
-  {
-    id: 'sub-1',
-    studentName: 'นายกิตติศักดิ์ พัฒนศิลป์',
-    studentId: '6701001',
-    classroom: 'ม.5/1',
-    submittedAt: '26/09/2569 14:32 น.',
-    status: 'SUBMITTED',
-    maxScore: 20,
-    content: 'สร้างภาพโปสเตอร์วิทยาศาสตร์ในยุคอนาคตด้วย Gemini Imagen และจัดเลย์เอาต์ด้วย Canva AI โดยวิเคราะห์สีแบบ Cyberpunk',
-    linkUrl: 'https://canva.com/design/DAFexample',
-    files: ['poster_ai_final.png (3.2 MB)', 'prompt_notebooklm.pdf (1.1 MB)'],
-  },
-  {
-    id: 'sub-2',
-    studentName: 'นางสาวพิมพ์ชนก รัตนพร',
-    studentId: '6701004',
-    classroom: 'ม.5/1',
-    submittedAt: '26/09/2569 13:45 น.',
-    status: 'GRADED',
-    score: 18,
-    maxScore: 20,
-    feedback: 'ผลงานดีมาก มีการใช้ AI ได้เหมาะสมและ Prompt ชัดเจน มีการจัดวางองค์ประกอบได้น่าสนใจ',
-    content: 'Infographic สรุปการประยุกต์ใช้ NotebookLM เพื่อการวิจัยทางวิทยาศาสตร์ระดับมัธยมปลาย',
-    linkUrl: 'https://notebooklm.google.com/notebook/example',
-    files: ['notebooklm_infographic.png (4.5 MB)'],
-  },
-  {
-    id: 'sub-3',
-    studentName: 'นายวชิรวิทย์ สมบูรณ์',
-    studentId: '6701025',
-    classroom: 'ม.5/2',
-    submittedAt: '26/09/2569 15:10 น.',
-    status: 'SUBMITTED',
-    maxScore: 20,
-    content: 'วิดีโอสตอรี่บอร์ดแอนิเมชันสร้างด้วย Runway Gen-2 ผสานเสียงพากย์ AI ภาษาไทย',
-    linkUrl: 'https://youtube.com/watch?v=example',
-    files: ['storyboard.pdf (2.8 MB)', 'sample_ai_clip.mp4 (18.4 MB)'],
-  },
-  {
-    id: 'sub-4',
-    studentName: 'นางสาวสุทธิดา วงศ์เจริญ',
-    studentId: '6701033',
-    classroom: 'ม.5/2',
-    submittedAt: '26/09/2569 16:02 น.',
-    status: 'SUBMITTED',
-    maxScore: 20,
-    content: 'แดชบอร์ดวิเคราะห์ข้อมูลโรงเรียนด้วย Google Looker Studio + AI แนะนำการตีความ',
-    linkUrl: 'https://lookerstudio.google.com/example',
-    files: ['dashboard_screenshot.png (5.1 MB)'],
-  },
-];
 
 const NAV_ITEMS = [
   { key: 'dashboard' as Section, label: 'แดชบอร์ดภาพรวม', icon: LayoutDashboard },
@@ -95,11 +34,11 @@ const NAV_ITEMS = [
 
 export default function TeacherDashboardPage() {
   const [activeSection, setActiveSection] = useState<Section>('dashboard');
-  const [submissions, setSubmissions] = useState<MockSubmission[]>(INITIAL_SUBMISSIONS);
-  const [selectedSub, setSelectedSub] = useState<MockSubmission | null>(INITIAL_SUBMISSIONS[0]);
+  const [submissions, setSubmissions] = useState<SubmissionItem[]>(getSubmissions());
+  const [selectedSub, setSelectedSub] = useState<SubmissionItem | null>(null);
   const [gradeFilter, setGradeFilter] = useState<'ALL' | 'SUBMITTED' | 'GRADED'>('ALL');
-  const [gradeScore, setGradeScore] = useState('18');
-  const [gradeFeedback, setGradeFeedback] = useState('ผลงานดี มีความคิดสร้างสรรค์ และเข้าใจหลักการ Prompting');
+  const [gradeScore, setGradeScore] = useState('20');
+  const [gradeFeedback, setGradeFeedback] = useState('ผลงานยอดเยี่ยม');
   const [gradingSuccess, setGradingSuccess] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>(getPosts());
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
@@ -116,10 +55,9 @@ export default function TeacherDashboardPage() {
       alert(`คะแนนต้องอยู่ระหว่าง 0 ถึง ${selectedSub.maxScore}`);
       return;
     }
-    setSubmissions(prev => prev.map(s =>
-      s.id === selectedSub.id ? { ...s, status: 'GRADED', score: num, feedback: gradeFeedback } : s
-    ));
-    setSelectedSub({ ...selectedSub, status: 'GRADED', score: num, feedback: gradeFeedback });
+    gradeSubmissionInStore(selectedSub.id, num, gradeFeedback);
+    setSubmissions(getSubmissions());
+    setSelectedSub(prev => prev ? { ...prev, status: 'GRADED', score: num, feedback: gradeFeedback } : null);
     setGradingSuccess(true);
     setTimeout(() => setGradingSuccess(false), 3000);
   };
@@ -301,37 +239,44 @@ export default function TeacherDashboardPage() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {submissions.map((sub) => (
-                  <div
-                    key={sub.id}
-                    onClick={() => {
-                      setSelectedSub(sub);
-                      setGradeScore(sub.score ? String(sub.score) : '18');
-                      setGradeFeedback(sub.feedback || 'ผลงานดี มีความคิดสร้างสรรค์ และเข้าใจหลักการ Prompting');
-                      setActiveSection('grade');
-                    }}
-                    className="p-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">
-                        {sub.studentName[0]}
-                      </div>
-                      <div>
-                        <div className="font-bold text-xs text-slate-900">{sub.studentName}</div>
-                        <div className="text-[11px] text-slate-400">รหัส: {sub.studentId} • {sub.classroom}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-slate-400 hidden sm:inline">{sub.submittedAt}</span>
-                      {sub.status === 'GRADED' ? (
-                        <Badge variant="mint" className="text-xs">ตรวจแล้ว ({sub.score}/{sub.maxScore})</Badge>
-                      ) : (
-                        <Badge variant="amber" className="text-xs">รอตรวจ</Badge>
-                      )}
-                    </div>
+                {submissions.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    ยังไม่มีรายการส่งงานจากนักเรียนในขณะนี้ (เมื่อนักเรียนส่งงานจะปรากฏที่นี่ทันที)
                   </div>
-                ))}
+                ) : (
+                  submissions.map((sub) => (
+                    <div
+                      key={sub.id}
+                      onClick={() => {
+                        setSelectedSub(sub);
+                        setGradeScore(sub.score ? String(sub.score) : '20');
+                        setGradeFeedback(sub.feedback || 'ผลงานยอดเยี่ยม');
+                        setActiveSection('grade');
+                      }}
+                      className="p-3.5 hover:bg-slate-50/80 transition-colors cursor-pointer flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">
+                          {sub.studentName[0]}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs text-slate-900">{sub.studentName}</div>
+                          <div className="text-[11px] text-slate-400">รหัส: {sub.studentId} • {sub.classroom}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] text-slate-400 hidden sm:inline">{sub.submittedAt}</span>
+                        {sub.status === 'GRADED' ? (
+                          <Badge variant="mint" className="text-xs">ตรวจแล้ว ({sub.score}/{sub.maxScore})</Badge>
+                        ) : (
+                          <Badge variant="amber" className="text-xs">รอตรวจ</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
 

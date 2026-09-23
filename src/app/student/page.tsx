@@ -53,12 +53,8 @@ export default function StudentDashboardPage() {
 
   const handleOpenAssignment = (assign: AssignmentItem) => {
     setSelectedAssign(assign);
-    setSubmissionContent(
-      assign.id === 'assign-1'
-        ? 'สร้างภาพโปสเตอร์วิทยาศาสตร์ในยุคอนาคตด้วย Gemini Imagen โดยใช้ Prompt ระบุโทนสี Cyberpunk...'
-        : ''
-    );
-    setSubmissionLink(assign.id === 'assign-1' ? 'https://canva.com/design/DAFexample' : '');
+    setSubmissionContent('');
+    setSubmissionLink('');
     setIsSubmittedNotice(null);
   };
 
@@ -199,58 +195,66 @@ export default function StudentDashboardPage() {
               </div>
 
               <div className="space-y-3">
-                {assignments.map((assign) => (
-                  <Card
-                    key={assign.id}
-                    onClick={() => handleOpenAssignment(assign)}
-                    className="p-5 border-slate-200/80 hover:border-brand-500 hover:shadow-md cursor-pointer transition-all bg-white"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-base font-bold text-slate-900">{assign.title}</h4>
+                {assignments.length === 0 ? (
+                  <div className="p-12 text-center text-slate-400 bg-white border border-dashed rounded-2xl">
+                    <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-bold text-slate-600 text-sm">ยังไม่มีงานที่มอบหมายในขณะนี้</p>
+                    <p className="text-xs text-slate-400 mt-1">เมื่อครูผู้สอนมอบหมายงานใหม่ งานจะปรากฏขึ้นที่นี่</p>
+                  </div>
+                ) : (
+                  assignments.map((assign) => (
+                    <Card
+                      key={assign.id}
+                      onClick={() => handleOpenAssignment(assign)}
+                      className="p-5 border-slate-200/80 hover:border-brand-500 hover:shadow-md cursor-pointer transition-all bg-white"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-bold text-slate-900">{assign.title}</h4>
+                          </div>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                            {assign.description}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                          {assign.description}
-                        </p>
+
+                        <div className="text-right shrink-0">
+                          <Badge variant="mint" className="text-xs font-bold mb-1">
+                            {assign.max_score} คะแนน
+                          </Badge>
+                          <div className="mt-1">
+                            {assign.submission_status === 'GRADED' ? (
+                              <Badge variant="mint" className="text-[11px]">
+                                ตรวจแล้ว ({assign.score}/{assign.max_score})
+                              </Badge>
+                            ) : assign.submission_status === 'SUBMITTED' ? (
+                              <Badge variant="amber" className="text-[11px]">
+                                ส่งแล้ว รอตรวจ
+                              </Badge>
+                            ) : assign.submission_status === 'DRAFT' ? (
+                              <Badge variant="slate" className="text-[11px]">
+                                แบบร่าง (Draft)
+                              </Badge>
+                            ) : (
+                              <Badge variant="rose" className="text-[11px]">
+                                ยังไม่ได้ส่ง
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <Badge variant="mint" className="text-xs font-bold mb-1">
-                          {assign.max_score} คะแนน
-                        </Badge>
-                        <div className="mt-1">
-                          {assign.submission_status === 'GRADED' ? (
-                            <Badge variant="mint" className="text-[11px]">
-                              ตรวจแล้ว ({assign.score}/{assign.max_score})
-                            </Badge>
-                          ) : assign.submission_status === 'SUBMITTED' ? (
-                            <Badge variant="amber" className="text-[11px]">
-                              ส่งแล้ว รอตรวจ
-                            </Badge>
-                          ) : assign.submission_status === 'DRAFT' ? (
-                            <Badge variant="slate" className="text-[11px]">
-                              แบบร่าง (Draft)
-                            </Badge>
-                          ) : (
-                            <Badge variant="rose" className="text-[11px]">
-                              ยังไม่ได้ส่ง
-                            </Badge>
-                          )}
-                        </div>
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" /> กำหนดส่ง: {assign.due_date}
+                        </span>
+                        <span className="font-bold text-brand-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                          เปิดทำภารกิจ <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
                       </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" /> กำหนดส่ง: {assign.due_date}
-                      </span>
-                      <span className="font-bold text-brand-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                        เปิดทำภารกิจ <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))
+                )}
               </div>
             </div>
           ) : (
@@ -366,9 +370,17 @@ export default function StudentDashboardPage() {
       {/* 7. Tab 4: Feed */}
       {activeTab === 'feed' && (
         <div className="max-w-xl mx-auto space-y-4">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} onUpdate={() => setPosts(getPosts())} />
-          ))}
+          {posts.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 bg-white border border-dashed rounded-2xl">
+              <Newspaper className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              <p className="font-bold text-slate-600 text-sm">ยังไม่มีประกาศใหม่</p>
+              <p className="text-xs text-slate-400 mt-1">เมื่อครูผู้สอนโพสต์ข่าวสารหรือประกาศ จะแสดงที่นี่ทันที</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard key={post.id} post={post} onUpdate={() => setPosts(getPosts())} />
+            ))
+          )}
         </div>
       )}
     </div>

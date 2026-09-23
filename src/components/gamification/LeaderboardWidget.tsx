@@ -104,8 +104,12 @@ export function LeaderboardWidget() {
           ))}
 
           {filteredUsers.length === 0 && (
-            <div className="p-6 text-center text-xs text-slate-400">
-              ไม่พบข้อมูลที่ตรงกับคำค้นหา &quot;{searchQuery}&quot;
+            <div className="p-8 text-center text-xs text-slate-400">
+              {searchQuery ? (
+                `ไม่พบข้อมูลที่ตรงกับคำค้นหา "${searchQuery}"`
+              ) : (
+                'ยังไม่มีคะแนนสะสมในระบบ (เมื่อนักเรียนกรอกรหัสคะแนนหรือตรวจงานแล้ว อันดับจะปรากฏที่นี่ทันที)'
+              )}
             </div>
           )}
         </div>

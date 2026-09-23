@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bot, GraduationCap, CheckCircle, ArrowRight } from 'lucide-react';
+import { registerStudentInStore } from '@/lib/data-store';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,6 +23,13 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    registerStudentInStore({
+      fullName: studentName,
+      gradeLevel,
+      room,
+      username: studentUsername,
+    });
 
     setTimeout(() => {
       setIsLoading(false);

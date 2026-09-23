@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ShieldCheck
 } from 'lucide-react';
+import { registerStudentInStore, getAllMembers, setCurrentStudentSession } from '@/lib/data-store';
 
 // ─── ข้อมูล credentials ครู (hardcoded, ห้ามสมัครจากหน้าเว็บ) ───────────────
 const TEACHER_CREDENTIALS = { username: 'admin', password: 'admin1234' };
@@ -44,6 +45,13 @@ export default function HomePage() {
     setIsLoading(true);
     setErrorMsg(null);
 
+    registerStudentInStore({
+      fullName: studentName,
+      gradeLevel,
+      room,
+      username: studentUsername,
+    });
+
     setTimeout(() => {
       setIsLoading(false);
       setSuccessMsg('สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบนักเรียน...');
@@ -70,7 +78,13 @@ export default function HomePage() {
           setErrorMsg('Username หรือรหัสผ่านไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ');
         }
       } else {
-        // นักเรียน: เข้าใช้งานได้ทันที (ในระบบ demo)
+        // นักเรียน: หาชื่อที่สมัครไว้ หรือใช้เซสชัน
+        const student = getAllMembers().find(
+          p => p.role === 'STUDENT' && (p.username === loginUsername.trim() || p.student_id === loginUsername.trim())
+        );
+        if (student) {
+          setCurrentStudentSession(student);
+        }
         router.push('/student');
       }
     }, 500);
