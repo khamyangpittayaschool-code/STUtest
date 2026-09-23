@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { fireCelebrationConfetti } from './ConfettiEffect';
-import { redeemCodeInStore } from '@/lib/data-store';
+import { redeemCodeAction } from '@/lib/actions';
 import { CodeRedemptionResult } from '@/types/database';
 import { Sparkles, CheckCircle2, AlertCircle, ArrowRight, Trophy, Users } from 'lucide-react';
 
@@ -71,8 +71,7 @@ export function CodeRedemptionBox({ onSuccess, userId = 'u-student-1' }: CodeRed
     setErrorMsg(null);
 
     try {
-      await new Promise((res) => setTimeout(res, 500));
-      const res = redeemCodeInStore(fullCode, userId);
+      const res = await redeemCodeAction(fullCode, userId);
 
       if (res.success) {
         setSuccessResult(res);

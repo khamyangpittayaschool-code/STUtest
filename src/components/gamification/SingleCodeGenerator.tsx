@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { generateSingleCodeInStore, getAllCodes } from '@/lib/data-store';
+import { generateSingleCodeAction, getAllCodesAction } from '@/lib/actions';
 import { ActivityCode } from '@/types/database';
 import { Dices, Sparkles, ShieldCheck, Copy, Check, Eye, Trash2, Flame } from 'lucide-react';
 
@@ -18,22 +18,32 @@ export function SingleCodeGenerator({ onCodeGenerated }: SingleCodeGeneratorProp
   const [copied, setCopied] = useState(false);
   const [activeCodes, setActiveCodes] = useState<ActivityCode[]>([]);
 
-  const refreshActiveCodes = () => {
-    const all = getAllCodes();
-    setActiveCodes(all.filter((c) => c.status === 'ACTIVE'));
+  const refreshActiveCodes = async () => {
+    try {
+      const all = await getAllCodesAction();
+      setActiveCodes(all.filter((c) => c.status === 'ACTIVE'));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
     refreshActiveCodes();
   }, []);
 
-  const handleGenerate = () => {
-    const newCode = generateSingleCodeInStore(selectedPoints, 'สุ่มรหัสสดหน้าชั้นเรียน');
-    setCurrentCode(newCode);
-    setCopied(false);
-    refreshActiveCodes();
-    if (onCodeGenerated) {
-      onCodeGenerated(newCode);
+  const handleGenerate = async () => {
+    try {
+      const newCode = await generateSingleCodeAction(selectedPoints, 'สุ่มรหัสสดหน้าชั้นเรียน');
+      if (newCode) {
+        setCurrentCode(newCode);
+        setCopied(false);
+        await refreshActiveCodes();
+        if (onCodeGenerated) {
+          onCodeGenerated(newCode);
+        }
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 

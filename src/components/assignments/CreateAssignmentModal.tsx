@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { addAssignment, AssignmentItem } from '@/lib/data-store';
+import { AssignmentItem } from '@/lib/data-store';
+import { createAssignmentAction } from '@/lib/actions';
 import { X, Plus, FileText, Calendar, Award } from 'lucide-react';
 
 interface CreateAssignmentModalProps {
@@ -22,28 +23,37 @@ export function CreateAssignmentModal({
   const [description, setDescription] = useState('');
   const [maxScore, setMaxScore] = useState<number>(20);
   const [dueDate, setDueDate] = useState('26/09/2569 16:00 น.');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    const newAssignment = addAssignment({
-      title: title.trim(),
-      description: description.trim(),
-      max_score: maxScore > 0 ? maxScore : 10,
-      due_date: dueDate.trim() || 'วันนี้ 16:00 น.',
-      status: 'ACTIVE',
-      teacher_name: teacherName,
-    });
+    setIsSubmitting(true);
+    try {
+      const newAssignment = await createAssignmentAction({
+        title: title.trim(),
+        description: description.trim(),
+        maxScore: maxScore > 0 ? maxScore : 10,
+        dueDate: dueDate.trim() || 'วันนี้ 16:00 น.',
+        teacherName: teacherName,
+      });
 
-    onCreated(newAssignment);
-    setTitle('');
-    setDescription('');
-    setMaxScore(20);
-    setDueDate('26/09/2569 16:00 น.');
-    onClose();
+      if (newAssignment) {
+        onCreated(newAssignment);
+      }
+      setTitle('');
+      setDescription('');
+      setMaxScore(20);
+      setDueDate('26/09/2569 16:00 น.');
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

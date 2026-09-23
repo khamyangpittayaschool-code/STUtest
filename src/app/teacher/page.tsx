@@ -9,15 +9,16 @@ import { SingleCodeGenerator } from '@/components/gamification/SingleCodeGenerat
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal';
 import {
-  getPosts,
-  deletePost,
   FeedPost,
-  addComment,
-  getSubmissions,
-  gradeSubmissionInStore,
   SubmissionItem,
-  getAssignments
 } from '@/lib/data-store';
+import {
+  getPostsAction,
+  deletePostAction,
+  addCommentAction,
+  getSubmissionsAction,
+  gradeSubmissionAction,
+} from '@/lib/actions';
 import {
   School, LayoutDashboard, Megaphone, CheckCircle2, Clock, FileText,
   Check, Edit3, Plus, ExternalLink, Trash2, Pin, MessageSquare,
@@ -36,21 +37,40 @@ const NAV_ITEMS = [
 
 export default function TeacherDashboardPage() {
   const [activeSection, setActiveSection] = useState<Section>('dashboard');
-  const [submissions, setSubmissions] = useState<SubmissionItem[]>(getSubmissions());
+  const [submissions, setSubmissions] = useState<SubmissionItem[]>([]);
   const [selectedSub, setSelectedSub] = useState<SubmissionItem | null>(null);
   const [gradeFilter, setGradeFilter] = useState<'ALL' | 'SUBMITTED' | 'GRADED'>('ALL');
   const [gradeScore, setGradeScore] = useState('1');
   const [gradeFeedback, setGradeFeedback] = useState('ผลงานยอดเยี่ยม');
   const [gradingSuccess, setGradingSuccess] = useState(false);
-  const [posts, setPosts] = useState<FeedPost[]>(getPosts());
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
+  const loadData = async () => {
+    try {
+      const [pData, sData] = await Promise.all([
+        getPostsAction(),
+        getSubmissionsAction(),
+      ]);
+      setPosts(pData);
+      setSubmissions(sData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  React.useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
-  const handleGradeSubmit = (e: React.FormEvent) => {
+  const handleGradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSub) return;
     const num = parseFloat(gradeScore);
@@ -58,31 +78,40 @@ export default function TeacherDashboardPage() {
       alert(`คะแนนต้องเริ่มต้นที่ 1 ถึง ${selectedSub.maxScore}`);
       return;
     }
-    gradeSubmissionInStore(selectedSub.id, num, gradeFeedback);
-    setSubmissions(getSubmissions());
+    await gradeSubmissionAction({
+      submissionId: selectedSub.id,
+      score: num,
+      feedback: gradeFeedback,
+    });
+    await loadData();
     setSelectedSub(prev => prev ? { ...prev, status: 'GRADED', score: num, feedback: gradeFeedback } : null);
     setGradingSuccess(true);
     setTimeout(() => setGradingSuccess(false), 3000);
   };
 
-  const handleDeletePost = (id: string) => {
+  const handleDeletePost = async (id: string) => {
     if (!confirm('ยืนยันที่จะลบโพสต์นี้หรือไม่?')) return;
-    deletePost(id);
-    setPosts(getPosts());
+    await deletePostAction(id);
+    await loadData();
     if (expandedPostId === id) setExpandedPostId(null);
   };
 
-  const handlePostSaved = () => {
-    setPosts(getPosts());
+  const handlePostSaved = async () => {
+    await loadData();
     setIsPostModalOpen(false);
     setEditingPost(null);
   };
 
-  const handleAddComment = (postId: string) => {
+  const handleAddComment = async (postId: string) => {
     const text = commentInputs[postId]?.trim();
     if (!text) return;
-    addComment(postId, text, 'ครูผู้สอน', 'ครูผู้สอน');
-    setPosts(getPosts());
+    await addCommentAction({
+      postId,
+      content: text,
+      authorName: 'ครูผู้สอน',
+      authorRole: 'ครูผู้สอน',
+    });
+    await loadData();
     setCommentInputs(prev => ({ ...prev, [postId]: '' }));
   };
 

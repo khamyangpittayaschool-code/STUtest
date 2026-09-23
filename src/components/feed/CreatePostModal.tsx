@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { addPost, updatePost, FeedPost } from '@/lib/data-store';
+import { FeedPost } from '@/lib/data-store';
+import { createPostAction, updatePostAction } from '@/lib/actions';
 import { X, Plus, Megaphone, Pin, Save } from 'lucide-react';
 
 interface CreatePostModalProps {
@@ -19,14 +20,15 @@ export function CreatePostModal({
   isOpen,
   onClose,
   onCreated,
-  authorName = 'อาจารย์ชูเกียรติ มงคลชัย',
-  authorRole = 'วิทยากร / ครูผู้สอน',
+  authorName = 'ครูผู้สอน',
+  authorRole = 'ครูผู้สอน',
   editPost = null,
 }: CreatePostModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPinned, setIsPinned] = useState(false);
   const [allowComment, setAllowComment] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // เติมข้อมูลเดิมเมื่ออยู่ในโหมดแก้ไข
   useEffect(() => {
@@ -47,27 +49,44 @@ export function CreatePostModal({
 
   const isEditing = !!editPost;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
-    if (isEditing && editPost) {
-      const updated = updatePost(editPost.id, { title, content, is_pinned: isPinned, allow_comment: allowComment });
-      if (updated) onCreated(updated);
-    } else {
-      const newPost = addPost({
-        title,
-        content,
-        post_type: 'ANNOUNCEMENT',
-        author_name: authorName,
-        author_role: authorRole,
-        is_pinned: isPinned,
-        allow_comment: allowComment,
-      });
-      onCreated(newPost);
+    setIsSubmitting(true);
+    try {
+      if (isEditing && editPost) {
+        await updatePostAction(editPost.id, {
+          title: title.trim(),
+          content: content.trim(),
+          is_pinned: isPinned,
+          allow_comment: allowComment,
+        });
+        onCreated({
+          ...editPost,
+          title: title.trim(),
+          content: content.trim(),
+          is_pinned: isPinned,
+          allow_comment: allowComment,
+        });
+      } else {
+        const newPost = await createPostAction({
+          title: title.trim(),
+          content: content.trim(),
+          postType: 'ANNOUNCEMENT',
+          authorName,
+          authorRole,
+          isPinned,
+          allowComment,
+        });
+        if (newPost) onCreated(newPost);
+      }
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   return (

@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bot, GraduationCap, CheckCircle, ArrowRight } from 'lucide-react';
-import { registerStudentInStore } from '@/lib/data-store';
+import { setCurrentStudentSession } from '@/lib/data-store';
+import { registerStudentAction } from '@/lib/actions';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,22 +21,28 @@ export default function RegisterPage() {
   const [studentUsername, setStudentUsername] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    registerStudentInStore({
-      fullName: studentName,
-      gradeLevel,
-      room,
-      username: studentUsername,
-    });
+    try {
+      const student = await registerStudentAction({
+        fullName: studentName.trim(),
+        gradeLevel,
+        room,
+        username: studentUsername.trim(),
+      });
 
-    setTimeout(() => {
+      if (student) {
+        setCurrentStudentSession(student);
+      }
       setIsLoading(false);
       setSuccess(true);
-      setTimeout(() => router.push('/student'), 1200);
-    }, 800);
+      setTimeout(() => router.push('/student'), 1000);
+    } catch {
+      setIsLoading(false);
+      alert('เกิดข้อผิดพลาดในการสมัครสมาชิก');
+    }
   };
 
   return (

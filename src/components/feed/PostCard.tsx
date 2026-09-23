@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FeedPost, toggleReaction, addComment } from '@/lib/data-store';
+import { FeedPost, toggleReaction } from '@/lib/data-store';
+import { addCommentAction } from '@/lib/actions';
 import {
   Heart,
   ThumbsUp,
@@ -34,13 +35,18 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
     if (onUpdate) onUpdate();
   };
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
 
-    const newC = addComment(post.id, commentText);
+    const newC = await addCommentAction({
+      postId: post.id,
+      content: commentText.trim(),
+      authorName: 'นักเรียน',
+      authorRole: 'นักเรียน',
+    });
     if (newC) {
-      setComments([...post.comments]);
+      setComments(prev => [...prev, newC]);
       setCommentText('');
       if (onUpdate) onUpdate();
     }

@@ -8,13 +8,16 @@ import { CodeRedemptionBox } from '@/components/gamification/CodeRedemptionBox';
 import { LeaderboardWidget } from '@/components/gamification/LeaderboardWidget';
 import { PostCard } from '@/components/feed/PostCard';
 import {
-  getStudentDashboardData,
-  getPosts,
-  getAssignments,
-  submitAssignmentStore,
+  getCurrentStudent,
   FeedPost,
   AssignmentItem
 } from '@/lib/data-store';
+import {
+  getPostsAction,
+  getAssignmentsAction,
+  submitAssignmentAction,
+  getStudentDashboardAction,
+} from '@/lib/actions';
 import { formatPoints } from '@/lib/utils';
 import {
   Star,
@@ -37,20 +40,37 @@ import {
 
 export default function StudentDashboardPage() {
   const [activeTab, setActiveTab] = useState<'code' | 'tasks' | 'feed' | 'ranks'>('code');
-  const [dashboardData, setDashboardData] = useState(getStudentDashboardData());
-  const [posts, setPosts] = useState<FeedPost[]>(getPosts());
-  const [assignments, setAssignments] = useState<AssignmentItem[]>(getAssignments());
+  const [currentStudent, setCurrentStudent] = useState(getCurrentStudent());
+  const [dashboardData, setDashboardData] = useState({
+    profile: currentStudent,
+    individualScore: 0,
+    userRank: '-',
+  });
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [selectedAssign, setSelectedAssign] = useState<AssignmentItem | null>(null);
 
-  // Auto-sync ข้อมูลอัตโนมัติ (เมื่อครูโพสต์ข่าวสารหรือมอบหมายงาน จะเด้งขึ้นทันที)
+  // Auto-sync ข้อมูลอัตโนมัติ (เมื่อครูโพสต์ข่าวสารหรือมอบหมายงาน จะเด้งขึ้นทันทีจาก PostgreSQL)
+  const syncData = async () => {
+    try {
+      const student = getCurrentStudent();
+      setCurrentStudent(student);
+      const [dash, pData, aData] = await Promise.all([
+        getStudentDashboardAction(student.id !== 'u-guest' ? student.id : undefined),
+        getPostsAction(),
+        getAssignmentsAction(student.id !== 'u-guest' ? student.id : undefined),
+      ]);
+      setDashboardData(dash);
+      setPosts(pData);
+      setAssignments(aData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
-    const syncData = () => {
-      setPosts(getPosts());
-      setAssignments(getAssignments());
-      setDashboardData(getStudentDashboardData());
-    };
     syncData();
-    const timer = setInterval(syncData, 1500);
+    const timer = setInterval(syncData, 2500);
     return () => clearInterval(timer);
   }, []);
 
@@ -60,7 +80,7 @@ export default function StudentDashboardPage() {
   const [isSubmittedNotice, setIsSubmittedNotice] = useState<string | null>(null);
 
   const handleRedeemSuccess = () => {
-    setDashboardData(getStudentDashboardData());
+    syncData();
   };
 
   const handleOpenAssignment = (assign: AssignmentItem) => {
@@ -70,12 +90,22 @@ export default function StudentDashboardPage() {
     setIsSubmittedNotice(null);
   };
 
-  const handleSubmitAssignment = (e: React.FormEvent, isDraft = false) => {
+  const handleSubmitAssignment = async (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
     if (!selectedAssign) return;
 
-    submitAssignmentStore(selectedAssign.id, submissionContent, submissionLink, isDraft);
-    setAssignments(getAssignments());
+    await submitAssignmentAction({
+      assignmentId: selectedAssign.id,
+      studentId: currentStudent.id !== 'u-guest' ? currentStudent.id : undefined,
+      studentName: currentStudent.full_name || 'นักเรียน',
+      classroom: `ม.${currentStudent.grade_level?.replace('ม.', '') || '5'}/${currentStudent.room || '1'}`,
+      content: submissionContent,
+      linkUrl: submissionLink,
+      maxScore: selectedAssign.max_score,
+      isDraft,
+    });
+
+    await syncData();
 
     if (isDraft) {
       setIsSubmittedNotice('💾 บันทึกแบบร่าง (Draft) สำเร็จ! คุณสามารถกลับมาแก้ไขและส่งจริงได้ก่อนกำหนด');
@@ -156,7 +186,7 @@ export default function StudentDashboardPage() {
         </button>
 
         <button
-          onClick={() => { setActiveTab('tasks'); setSelectedAssign(null); setAssignments(getAssignments()); }}
+          onClick={() => { setActiveTab('tasks'); setSelectedAssign(null); syncData(); }}
           className={`py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'tasks' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -176,7 +206,7 @@ export default function StudentDashboardPage() {
         </button>
 
         <button
-          onClick={() => { setActiveTab('feed'); setPosts(getPosts()); }}
+          onClick={() => { setActiveTab('feed'); syncData(); }}
           className={`py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'feed' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -390,7 +420,7 @@ export default function StudentDashboardPage() {
             </div>
           ) : (
             posts.map((post) => (
-              <PostCard key={post.id} post={post} onUpdate={() => setPosts(getPosts())} />
+              <PostCard key={post.id} post={post} onUpdate={() => syncData()} />
             ))
           )}
         </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { getLeaderboards } from '@/lib/data-store';
+import React, { useState, useEffect } from 'react';
+import { getLeaderboardAction } from '@/lib/actions';
+import { UserScoreLeaderboard } from '@/types/database';
 import { Trophy, Crown, Search, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,21 @@ import { formatPoints } from '@/lib/utils';
 
 export function LeaderboardWidget() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { userLeaderboard } = getLeaderboards();
+  const [userLeaderboard, setUserLeaderboard] = useState<UserScoreLeaderboard[]>([]);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const data = await getLeaderboardAction();
+        setUserLeaderboard(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchLeaderboard();
+    const timer = setInterval(fetchLeaderboard, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filteredUsers = userLeaderboard.filter((u) => {
     const q = searchQuery.toLowerCase().trim();

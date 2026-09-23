@@ -16,7 +16,8 @@ import {
   AlertCircle,
   ShieldCheck
 } from 'lucide-react';
-import { registerStudentInStore, getAllMembers, setCurrentStudentSession } from '@/lib/data-store';
+import { setCurrentStudentSession } from '@/lib/data-store';
+import { registerStudentAction, loginStudentAction } from '@/lib/actions';
 
 // ─── ข้อมูล credentials ครู (hardcoded, ห้ามสมัครจากหน้าเว็บ) ───────────────
 const TEACHER_CREDENTIALS = { username: 'admin', password: 'admin1234' };
@@ -40,33 +41,39 @@ export default function HomePage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginRole, setLoginRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
 
-    registerStudentInStore({
-      fullName: studentName,
-      gradeLevel,
-      room,
-      username: studentUsername,
-    });
+    try {
+      const student = await registerStudentAction({
+        fullName: studentName.trim(),
+        gradeLevel,
+        room,
+        username: studentUsername.trim(),
+      });
 
-    setTimeout(() => {
+      if (student) {
+        setCurrentStudentSession(student);
+        setSuccessMsg('สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบนักเรียน...');
+        setTimeout(() => router.push('/student'), 800);
+      } else {
+        setErrorMsg('ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง');
+      }
+    } catch {
+      setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล');
+    } finally {
       setIsLoading(false);
-      setSuccessMsg('สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบนักเรียน...');
-      setTimeout(() => router.push('/student'), 1000);
-    }, 600);
+    }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
 
-    setTimeout(() => {
-      setIsLoading(false);
-
+    try {
       if (loginRole === 'TEACHER') {
         // ตรวจสอบ credentials ครู (hardcoded)
         if (
@@ -78,16 +85,21 @@ export default function HomePage() {
           setErrorMsg('Username หรือรหัสผ่านไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ');
         }
       } else {
-        // นักเรียน: หาชื่อที่สมัครไว้ หรือใช้เซสชัน
-        const student = getAllMembers().find(
-          p => p.role === 'STUDENT' && (p.username === loginUsername.trim() || p.student_id === loginUsername.trim())
-        );
+        // นักเรียน: ค้นหาจากฐานข้อมูล Supabase
+        const student = await loginStudentAction(loginUsername.trim());
         if (student) {
           setCurrentStudentSession(student);
+          router.push('/student');
+        } else {
+          // ถ้ายังไม่มี username ในระบบ ให้เข้าใช้งานเป็นนักเรียนทั่วไป
+          router.push('/student');
         }
-        router.push('/student');
       }
-    }, 500);
+    } catch {
+      setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickStudent = () => {

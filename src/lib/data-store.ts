@@ -176,6 +176,12 @@ export function registerStudentInStore(data: {
 }
 
 export function getCurrentStudent(): Profile {
+  if (typeof window !== 'undefined' && !currentActiveStudent) {
+    try {
+      const saved = sessionStorage.getItem('active_student_profile');
+      if (saved) currentActiveStudent = JSON.parse(saved);
+    } catch {}
+  }
   if (currentActiveStudent) return currentActiveStudent;
   const firstStudent = currentProfiles.find(p => p.role === 'STUDENT');
   if (firstStudent) return firstStudent;
@@ -196,6 +202,11 @@ export function getCurrentStudent(): Profile {
 
 export function setCurrentStudentSession(profile: Profile) {
   currentActiveStudent = profile;
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('active_student_profile', JSON.stringify(profile));
+    } catch {}
+  }
 }
 
 export function getSystemOverview() {
