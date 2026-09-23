@@ -15,7 +15,11 @@ import {
   Pin,
   Send,
   User,
-  Share2
+  Share2,
+  ExternalLink,
+  ChevronRight,
+  Maximize2,
+  X
 } from 'lucide-react';
 
 interface PostCardProps {
@@ -28,6 +32,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
   const [commentText, setCommentText] = useState('');
   const [reactions, setReactions] = useState(post.reactions);
   const [comments, setComments] = useState(post.comments);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const handleReactionClick = (type: 'heart' | 'like' | 'party' | 'idea') => {
     toggleReaction(post.id, type);
@@ -52,6 +57,39 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
     }
   };
 
+  /** แปลงข้อความ URL ให้เป็นลิงก์ที่สามารถกดได้ (Clickable Link Parser) */
+  const renderContentWithLinks = (content: string) => {
+    if (!content) return null;
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = content.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-600 font-bold hover:underline inline-flex items-center gap-0.5 break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part} <ExternalLink className="w-3.5 h-3.5 inline shrink-0 ml-0.5 text-brand-500" />
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const ensureHttpUrl = (url: string) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
+
   return (
     <Card className={`overflow-hidden transition-all bg-white ${post.is_pinned ? 'border-l-4 border-l-brand-600 shadow-md' : 'border-slate-200/80 shadow-xs'}`}>
       {/* Pinned & Type Header */}
@@ -72,7 +110,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
       {/* Author Details */}
       <div className="flex items-center gap-3 px-5 pt-3">
         <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
-          {post.author_name.charAt(0)}
+          {post.author_name ? post.author_name.charAt(0) : 'A'}
         </div>
         <div>
           <h4 className="font-bold text-xs text-slate-900 leading-none">{post.author_name}</h4>
@@ -81,14 +119,72 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
       </div>
 
       {/* Post Title & Content */}
-      <div className="px-5 py-3 space-y-2">
+      <div className="px-5 py-3 space-y-3">
         <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
           {post.title}
         </h3>
-        <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">
-          {post.content}
-        </p>
+        <div className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">
+          {renderContentWithLinks(post.content)}
+        </div>
+
+        {/* รูปภาพแนบในโพสต์ (Attached Image) */}
+        {post.image_url && (
+          <div className="rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-900/5 my-3 relative group">
+            <img
+              src={post.image_url}
+              alt={post.title}
+              className="w-full max-h-[460px] object-cover hover:scale-[1.01] transition-transform cursor-pointer"
+              onClick={() => setIsImageModalOpen(true)}
+            />
+            <div className="absolute bottom-2 right-2 bg-slate-900/60 text-white text-[10px] px-2 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Maximize2 className="w-3 h-3" /> คลิกเพื่อดูรูปใหญ่
+            </div>
+          </div>
+        )}
+
+        {/* ลิงก์แนบประจำโพสต์ (Attached External Link Card) */}
+        {post.link_url && (
+          <a
+            href={ensureHttpUrl(post.link_url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-brand-400 hover:bg-brand-50/50 transition-all group my-2 text-xs"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <ExternalLink className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-slate-800 group-hover:text-brand-700 truncate block text-xs">
+                  เปิดลิงก์ที่เกี่ยวข้องกับประกาศนี้
+                </span>
+                <span className="text-[11px] text-slate-400 truncate block font-mono">
+                  {post.link_url}
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
+          </a>
+        )}
       </div>
+
+      {/* Lightbox ดูรูปใหญ่ */}
+      {isImageModalOpen && post.image_url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl">
+            <img src={post.image_url} alt={post.title} className="max-w-full max-h-[85vh] object-contain rounded-2xl" />
+            <button
+              onClick={() => setIsImageModalOpen(false)}
+              className="absolute top-3 right-3 bg-slate-900/70 text-white p-2 rounded-full hover:bg-slate-900 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Reactions Bar (Prompt Section 38: ❤️ 👍 🎉 💡) */}
       <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
@@ -149,7 +245,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
         )}
       </div>
 
-      {/* Comment Section (Prompt Section 37) */}
+      {/* Comment Section */}
       {showComments && post.allow_comment && (
         <div className="bg-slate-50/70 border-t border-slate-100 p-5 space-y-4">
           <div className="space-y-3">

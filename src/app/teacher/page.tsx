@@ -417,6 +417,26 @@ export default function TeacherDashboardPage() {
                           <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed whitespace-pre-line">
                             {post.content}
                           </p>
+
+                          {post.image_url && (
+                            <div className="mt-2.5 rounded-xl overflow-hidden border border-slate-200/80 bg-slate-900/5 max-h-48">
+                              <img src={post.image_url} alt={post.title} className="max-h-48 w-full object-cover" />
+                            </div>
+                          )}
+
+                          {post.link_url && (
+                            <div className="mt-2.5">
+                              <a
+                                href={post.link_url.startsWith('http') ? post.link_url : `https://${post.link_url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline bg-brand-50 border border-brand-200 px-3 py-1.5 rounded-xl break-all"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 shrink-0" /> {post.link_url}
+                              </a>
+                            </div>
+                          )}
+
                           <div className="mt-3 flex items-center gap-3 text-[11px] text-slate-400">
                             <span>ผู้โพสต์: <strong className="text-slate-600">{post.author_name}</strong></span>
                             <span className="flex items-center gap-1">

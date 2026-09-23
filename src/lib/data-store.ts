@@ -51,6 +51,8 @@ export interface FeedPost {
   is_pinned: boolean;
   allow_comment: boolean;
   created_at: string;
+  image_url?: string;
+  link_url?: string;
   reactions: {
     heart: number;
     like: number;

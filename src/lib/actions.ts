@@ -20,8 +20,21 @@ import {
 // 1. Posts & Comments Actions
 // ─────────────────────────────────────────────────────────────────────────────
 
+let postsColumnsChecked = false;
+async function ensurePostsColumns() {
+  if (postsColumnsChecked) return;
+  try {
+    await query(`ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS image_url TEXT;`);
+    await query(`ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS link_url TEXT;`);
+    postsColumnsChecked = true;
+  } catch (e) {
+    console.error('ensurePostsColumns error:', e);
+  }
+}
+
 export async function getPostsAction(): Promise<FeedPost[]> {
   try {
+    await ensurePostsColumns();
     const postsRes = await query(`
       SELECT 
         p.id,
@@ -33,7 +46,9 @@ export async function getPostsAction(): Promise<FeedPost[]> {
         p.is_pinned,
         p.allow_comment,
         p.reactions_count,
-        p.created_at
+        p.created_at,
+        COALESCE(p.image_url, '') as image_url,
+        COALESCE(p.link_url, '') as link_url
       FROM public.posts p
       LEFT JOIN public.profiles pr ON p.author_id = pr.id
       WHERE p.status != 'ARCHIVED'
@@ -78,6 +93,8 @@ export async function getPostsAction(): Promise<FeedPost[]> {
       is_pinned: Boolean(row.is_pinned),
       allow_comment: Boolean(row.allow_comment),
       created_at: formatThaiDate(row.created_at),
+      image_url: row.image_url || undefined,
+      link_url: row.link_url || undefined,
       reactions: row.reactions_count || { heart: 0, like: 0, party: 0, idea: 0 },
       comments: commentsByPost[row.id] || [],
     }));
@@ -96,13 +113,16 @@ export async function createPostAction(data: {
   authorRole?: string;
   postType?: string;
   authorId?: string;
+  imageUrl?: string;
+  linkUrl?: string;
 }): Promise<FeedPost | null> {
   try {
+    await ensurePostsColumns();
     const res = await query(
       `
       INSERT INTO public.posts (
-        title, content, is_pinned, allow_comment, author_name, author_role, post_type, author_id, status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PUBLISHED', NOW(), NOW())
+        title, content, is_pinned, allow_comment, author_name, author_role, post_type, author_id, image_url, link_url, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PUBLISHED', NOW(), NOW())
       RETURNING *;
       `,
       [
@@ -114,6 +134,8 @@ export async function createPostAction(data: {
         data.authorRole ?? 'ครูผู้สอน',
         data.postType ?? 'ANNOUNCEMENT',
         data.authorId || null,
+        data.imageUrl || null,
+        data.linkUrl || null,
       ]
     );
 
@@ -128,6 +150,8 @@ export async function createPostAction(data: {
       is_pinned: row.is_pinned,
       allow_comment: row.allow_comment,
       created_at: 'เมื่อสักครู่',
+      image_url: row.image_url || undefined,
+      link_url: row.link_url || undefined,
       reactions: row.reactions_count || { heart: 0, like: 0, party: 0, idea: 0 },
       comments: [],
     };
@@ -144,9 +168,12 @@ export async function updatePostAction(
     content?: string;
     is_pinned?: boolean;
     allow_comment?: boolean;
+    image_url?: string;
+    link_url?: string;
   }
 ): Promise<boolean> {
   try {
+    await ensurePostsColumns();
     await query(
       `
       UPDATE public.posts
@@ -155,10 +182,12 @@ export async function updatePostAction(
         content = COALESCE($2, content),
         is_pinned = COALESCE($3, is_pinned),
         allow_comment = COALESCE($4, allow_comment),
+        image_url = $5,
+        link_url = $6,
         updated_at = NOW()
-      WHERE id = $5;
+      WHERE id = $7;
       `,
-      [data.title, data.content, data.is_pinned, data.allow_comment, id]
+      [data.title, data.content, data.is_pinned, data.allow_comment, data.image_url || null, data.link_url || null, id]
     );
     return true;
   } catch (error) {
