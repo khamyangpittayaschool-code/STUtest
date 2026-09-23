@@ -236,7 +236,11 @@ export default function StudentDashboardPage() {
       {/* 4. Tab 1: Code Input */}
       {activeTab === 'code' && (
         <div className="py-2">
-          <CodeRedemptionBox onSuccess={handleRedeemSuccess} />
+          <CodeRedemptionBox
+            onSuccess={handleRedeemSuccess}
+            userId={currentStudent.id}
+            username={currentStudent.username}
+          />
         </div>
       )}
 

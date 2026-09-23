@@ -11,9 +11,10 @@ import { Sparkles, CheckCircle2, AlertCircle, ArrowRight, Trophy, Users } from '
 interface CodeRedemptionBoxProps {
   onSuccess?: (result: CodeRedemptionResult) => void;
   userId?: string;
+  username?: string;
 }
 
-export function CodeRedemptionBox({ onSuccess, userId = 'u-student-1' }: CodeRedemptionBoxProps) {
+export function CodeRedemptionBox({ onSuccess, userId, username }: CodeRedemptionBoxProps) {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export function CodeRedemptionBox({ onSuccess, userId = 'u-student-1' }: CodeRed
     setErrorMsg(null);
 
     try {
-      const res = await redeemCodeAction(fullCode, userId);
+      const res = await redeemCodeAction(fullCode, userId, username);
 
       if (res.success) {
         setSuccessResult(res);

@@ -512,12 +512,13 @@ export async function deleteCodeAction(id: string): Promise<boolean> {
 
 export async function redeemCodeAction(
   code: string,
-  userId?: string
+  userId?: string,
+  username?: string
 ): Promise<CodeRedemptionResult> {
   try {
     const cleanCode = code.trim().toUpperCase();
 
-    // Find active code in Supabase
+    // 1. ตรวจสอบรหัสในฐานข้อมูล Supabase
     const codeRes = await query(
       `SELECT * FROM public.activity_codes WHERE code = $1 AND status = 'ACTIVE' LIMIT 1;`,
       [cleanCode]
@@ -526,30 +527,49 @@ export async function redeemCodeAction(
     if (codeRes.rowCount === 0) {
       return {
         success: false,
-        message: 'ไม่พบรหัสนี้ในระบบ หรือ รหัสถูกลบเนื่องจากมีผู้ใช้งานไปแล้ว',
+        message: '⚠️ ไม่พบรหัสนี้ในระบบ หรือ รหัสถูกใช้งานไปแล้ว',
       };
     }
 
     const targetCode = codeRes.rows[0];
     const pointsToAdd = Number(targetCode.points);
 
-    // Delete code from database immediately so nobody can reuse it
+    // 2. ลบรหัสออกจากฐานข้อมูลทันทีตามเงื่อนไข ป้องกันการใช้ซ้ำ
     await query(`DELETE FROM public.activity_codes WHERE id = $1;`, [targetCode.id]);
 
-    // Credit score to student if student profile exists
-    if (userId) {
-      const checkProfile = await query(`SELECT id FROM public.profiles WHERE id = $1`, [userId]);
-      if (checkProfile.rowCount && checkProfile.rowCount > 0) {
-        await query(
-          `
-          INSERT INTO public.user_scores (user_id, total_points, updated_at)
-          VALUES ($1, $2, NOW())
-          ON CONFLICT (user_id) 
-          DO UPDATE SET total_points = public.user_scores.total_points + EXCLUDED.total_points, updated_at = NOW();
-          `,
-          [userId, pointsToAdd]
-        );
-      }
+    // 3. ค้นหานักเรียนที่ถูกต้องเพื่อเพิ่มคะแนน
+    let targetStudentId: string | null = null;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId || '');
+
+    if (isUUID) {
+      const p = await query(`SELECT id FROM public.profiles WHERE id = $1`, [userId]);
+      if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
+    }
+
+    if (!targetStudentId && username) {
+      const p = await query(
+        `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name = $1) LIMIT 1`,
+        [username.trim()]
+      );
+      if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
+    }
+
+    if (!targetStudentId) {
+      const p = await query(`SELECT id FROM public.profiles WHERE role = 'STUDENT' ORDER BY created_at DESC LIMIT 1`);
+      if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
+    }
+
+    // 4. บันทึกและเพิ่มคะแนนลง user_scores ใน Supabase
+    if (targetStudentId) {
+      await query(
+        `
+        INSERT INTO public.user_scores (user_id, total_points, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) 
+        DO UPDATE SET total_points = public.user_scores.total_points + EXCLUDED.total_points, updated_at = NOW();
+        `,
+        [targetStudentId, pointsToAdd]
+      );
     }
 
     return {
