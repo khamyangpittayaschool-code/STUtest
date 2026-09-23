@@ -9,6 +9,7 @@ import { LeaderboardWidget } from '@/components/gamification/LeaderboardWidget';
 import { PostCard } from '@/components/feed/PostCard';
 import {
   getCurrentStudent,
+  setCurrentStudentSession,
   FeedPost,
   AssignmentItem
 } from '@/lib/data-store';
@@ -38,7 +39,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import { Profile } from '@/types/database';
+import { Profile, CodeRedemptionResult } from '@/types/database';
 
 const DEFAULT_STUDENT: Profile = {
   id: 'u-guest',
@@ -71,19 +72,46 @@ export default function StudentDashboardPage() {
       const student = getCurrentStudent();
       setCurrentStudent(student);
       const [dash, pData, aData] = await Promise.all([
-        getStudentDashboardAction(student.id !== 'u-guest' ? student.id : undefined),
+        getStudentDashboardAction(
+          student.id !== 'u-guest' ? student.id : undefined,
+          student.username || student.full_name
+        ),
         getPostsAction(),
         getAssignmentsAction(student.id !== 'u-guest' ? student.id : undefined),
       ]);
       setDashboardData(dash);
       setPosts(pData);
       setAssignments(aData);
+
+      // บันทึกลง Local Storage เมื่อได้รับข้อมูลล่าสุดจาก Supabase
+      if (dash.profile && dash.profile.id !== 'u-guest') {
+        setCurrentStudent(dash.profile);
+        setCurrentStudentSession(dash.profile);
+        try {
+          localStorage.setItem('student_score', String(dash.individualScore));
+        } catch {}
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
   useEffect(() => {
+    // 1. โหลดข้อมูลแคชจาก Local Storage ทันทีเพื่อความเร็วระดับ Real-time
+    try {
+      const savedProfile = localStorage.getItem('active_student_profile');
+      const savedScore = localStorage.getItem('student_score');
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        setCurrentStudent(parsed);
+        setDashboardData(prev => ({
+          ...prev,
+          profile: parsed,
+          individualScore: savedScore ? Number(savedScore) : prev.individualScore,
+        }));
+      }
+    } catch {}
+
     const student = getCurrentStudent();
     setCurrentStudent(student);
     syncData();
@@ -96,7 +124,31 @@ export default function StudentDashboardPage() {
   const [submissionContent, setSubmissionContent] = useState('');
   const [isSubmittedNotice, setIsSubmittedNotice] = useState<string | null>(null);
 
-  const handleRedeemSuccess = () => {
+  const handleRedeemSuccess = (result?: CodeRedemptionResult) => {
+    const points = result?.points_added || 0;
+    const newScore = result?.individual_score?.current !== undefined
+      ? result.individual_score.current
+      : dashboardData.individualScore + points;
+
+    // 1. อัปเดตทันทีแบบ Real-time บน UI (Optimistic UI Update)
+    setDashboardData(prev => ({
+      ...prev,
+      individualScore: newScore,
+    }));
+
+    // 2. บันทึกคะแนนลง localStorage ทันที
+    try {
+      localStorage.setItem('student_score', String(newScore));
+      if (result) {
+        localStorage.setItem('student_last_redemption', JSON.stringify({
+          time: new Date().toISOString(),
+          points,
+          newScore,
+        }));
+      }
+    } catch {}
+
+    // 3. ซิงค์กับฐานข้อมูลเพื่ออัปเดตอันดับ (Rank) ล่าสุด
     syncData();
   };
 
@@ -238,8 +290,18 @@ export default function StudentDashboardPage() {
         <div className="py-2">
           <CodeRedemptionBox
             onSuccess={handleRedeemSuccess}
-            userId={currentStudent.id}
-            username={currentStudent.username}
+            userId={
+              currentStudent.id !== 'u-guest'
+                ? currentStudent.id
+                : dashboardData.profile.id !== 'u-guest'
+                ? dashboardData.profile.id
+                : undefined
+            }
+            username={
+              dashboardData.profile.username ||
+              currentStudent.username ||
+              currentStudent.full_name
+            }
           />
         </div>
       )}

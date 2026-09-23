@@ -17,7 +17,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { setCurrentStudentSession } from '@/lib/data-store';
-import { registerStudentAction, loginStudentAction } from '@/lib/actions';
+import { registerStudentAction, loginStudentAction, getStudentDashboardAction } from '@/lib/actions';
 
 // ─── ข้อมูล credentials ครู (hardcoded, ห้ามสมัครจากหน้าเว็บ) ───────────────
 const TEACHER_CREDENTIALS = { username: 'admin', password: 'admin1234' };
@@ -102,12 +102,19 @@ export default function HomePage() {
     }
   };
 
-  const handleQuickStudent = () => {
+  const handleQuickStudent = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push('/student');
-    }, 300);
+    try {
+      const dash = await getStudentDashboardAction();
+      if (dash?.profile && dash.profile.id !== 'u-guest') {
+        setCurrentStudentSession(dash.profile);
+        try {
+          localStorage.setItem('student_score', String(dash.individualScore));
+        } catch {}
+      }
+    } catch {}
+    setIsLoading(false);
+    router.push('/student');
   };
 
   return (

@@ -548,34 +548,64 @@ export async function redeemCodeAction(
 
     if (!targetStudentId && username) {
       const p = await query(
-        `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name = $1) LIMIT 1`,
-        [username.trim()]
+        `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name ILIKE $2) LIMIT 1`,
+        [username.trim(), `%${username.trim()}%`]
+      );
+      if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
+    }
+
+    if (!targetStudentId && userId && !isUUID && userId !== 'u-guest') {
+      const p = await query(
+        `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name ILIKE $2) LIMIT 1`,
+        [userId.trim(), `%${userId.trim()}%`]
       );
       if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
     }
 
     if (!targetStudentId) {
-      const p = await query(`SELECT id FROM public.profiles WHERE role = 'STUDENT' ORDER BY created_at DESC LIMIT 1`);
+      const p = await query(`SELECT id FROM public.profiles WHERE role = 'STUDENT' ORDER BY updated_at DESC, created_at DESC LIMIT 1`);
       if (p.rowCount && p.rowCount > 0) targetStudentId = p.rows[0].id;
     }
 
-    // 4. บันทึกและเพิ่มคะแนนลง user_scores ใน Supabase
+    // 4. บันทึกและเพิ่มคะแนนลง user_scores ใน Supabase พร้อมคำนวณคะแนนก่อน-หลัง
+    let prevScore = 0;
+    let newScore = pointsToAdd;
+
     if (targetStudentId) {
-      await query(
+      const currentScoreRes = await query(
+        `SELECT total_points FROM public.user_scores WHERE user_id = $1;`,
+        [targetStudentId]
+      );
+      if (currentScoreRes.rowCount && currentScoreRes.rowCount > 0) {
+        prevScore = Number(currentScoreRes.rows[0].total_points);
+      }
+
+      const scoreRes = await query(
         `
         INSERT INTO public.user_scores (user_id, total_points, updated_at)
         VALUES ($1, $2, NOW())
         ON CONFLICT (user_id) 
-        DO UPDATE SET total_points = public.user_scores.total_points + EXCLUDED.total_points, updated_at = NOW();
+        DO UPDATE SET total_points = public.user_scores.total_points + EXCLUDED.total_points, updated_at = NOW()
+        RETURNING total_points;
         `,
         [targetStudentId, pointsToAdd]
       );
+
+      if (scoreRes.rowCount && scoreRes.rowCount > 0) {
+        newScore = Number(scoreRes.rows[0].total_points);
+      } else {
+        newScore = prevScore + pointsToAdd;
+      }
     }
 
     return {
       success: true,
       message: `🎉 ถูกต้อง! คุณได้รับ +${pointsToAdd} คะแนน (รหัสถูกลบออกจากระบบแล้ว)`,
       points_added: pointsToAdd,
+      individual_score: {
+        previous: prevScore,
+        current: newScore,
+      },
     };
   } catch (error) {
     console.error('redeemCodeAction error:', error);
@@ -706,22 +736,39 @@ export async function getLeaderboardAction(): Promise<UserScoreLeaderboard[]> {
   }
 }
 
-export async function getStudentDashboardAction(userId?: string): Promise<{
+export async function getStudentDashboardAction(userId?: string, username?: string): Promise<{
   profile: Profile;
   individualScore: number;
   userRank: string;
 }> {
   try {
     let profile: Profile | null = null;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId || '');
 
-    if (userId) {
+    if (isUUID) {
       const pRes = await query(`SELECT * FROM public.profiles WHERE id = $1;`, [userId]);
       if (pRes.rowCount && pRes.rowCount > 0) profile = pRes.rows[0];
     }
 
+    if (!profile && username) {
+      const pRes = await query(
+        `SELECT * FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name ILIKE $2) LIMIT 1;`,
+        [username.trim(), `%${username.trim()}%`]
+      );
+      if (pRes.rowCount && pRes.rowCount > 0) profile = pRes.rows[0];
+    }
+
+    if (!profile && userId && !isUUID && userId !== 'u-guest') {
+      const pRes = await query(
+        `SELECT * FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name ILIKE $2) LIMIT 1;`,
+        [userId.trim(), `%${userId.trim()}%`]
+      );
+      if (pRes.rowCount && pRes.rowCount > 0) profile = pRes.rows[0];
+    }
+
     if (!profile) {
-      // Pick first student
-      const firstRes = await query(`SELECT * FROM public.profiles WHERE role = 'STUDENT' ORDER BY created_at ASC LIMIT 1;`);
+      // Pick newest student consistently
+      const firstRes = await query(`SELECT * FROM public.profiles WHERE role = 'STUDENT' ORDER BY updated_at DESC, created_at DESC LIMIT 1;`);
       if (firstRes.rowCount && firstRes.rowCount > 0) profile = firstRes.rows[0];
     }
 
