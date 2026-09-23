@@ -901,10 +901,165 @@ export async function importStudentsCsvAction(
 export async function deleteStudentAction(id: string): Promise<boolean> {
   try {
     await query(`DELETE FROM public.user_scores WHERE user_id = $1;`, [id]);
+    await query(`DELETE FROM public.submissions WHERE student_id = $1;`, [id]);
     await query(`DELETE FROM public.profiles WHERE id = $1 AND role = 'STUDENT';`, [id]);
     return true;
   } catch (error) {
     console.error('deleteStudentAction error:', error);
+    return false;
+  }
+}
+
+export async function createStudentAction(data: {
+  fullName: string;
+  studentId: string;
+  username?: string;
+  password?: string;
+  gradeLevel?: string;
+  room?: string;
+}): Promise<{ success: boolean; message: string; student?: StudentManagementItem }> {
+  try {
+    const cleanName = data.fullName.trim();
+    const cleanStudentId = data.studentId.trim();
+    const cleanUsername = (data.username || cleanStudentId).trim();
+    const cleanPassword = (data.password || '1234').trim();
+    const grade = (data.gradeLevel || 'ม.5').trim();
+    const room = (data.room || '1').trim();
+
+    if (!cleanName || !cleanStudentId) {
+      return { success: false, message: 'กรุณากรอกชื่อ-นามสกุล และรหัสนักเรียนให้ครบถ้วน' };
+    }
+
+    const checkRes = await query(
+      `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $2) AND role = 'STUDENT';`,
+      [cleanUsername, cleanStudentId]
+    );
+
+    if (checkRes.rowCount && checkRes.rowCount > 0) {
+      return { success: false, message: `รหัสนักเรียนหรือชื่อผู้ใช้ "${cleanStudentId}" มีในระบบแล้ว` };
+    }
+
+    const insertRes = await query(
+      `
+      INSERT INTO public.profiles (
+        role, full_name, username, student_id, password, grade_level, room, status, created_at, updated_at
+      ) VALUES ('STUDENT', $1, $2, $3, $4, $5, $6, 'ACTIVE', NOW(), NOW())
+      RETURNING id, created_at;
+      `,
+      [cleanName, cleanUsername, cleanStudentId, cleanPassword, grade, room]
+    );
+
+    if (insertRes.rowCount && insertRes.rowCount > 0) {
+      const newId = insertRes.rows[0].id;
+      const createdAt = insertRes.rows[0].created_at;
+      await query(
+        `INSERT INTO public.user_scores (user_id, total_points, updated_at) VALUES ($1, 0, NOW()) ON CONFLICT (user_id) DO NOTHING;`,
+        [newId]
+      );
+
+      return {
+        success: true,
+        message: `เพิ่มบัญชีของ ${cleanName} เรียบร้อยแล้ว`,
+        student: {
+          id: newId,
+          username: cleanUsername,
+          student_id: cleanStudentId,
+          full_name: cleanName,
+          grade_level: grade,
+          room: room,
+          status: 'ACTIVE',
+          password: cleanPassword,
+          total_points: 0,
+          last_login_at: null,
+          created_at: formatThaiDate(createdAt),
+        },
+      };
+    }
+
+    return { success: false, message: 'ไม่สามารถเพิ่มนักเรียนได้' };
+  } catch (error) {
+    console.error('createStudentAction error:', error);
+    return { success: false, message: 'เกิดข้อผิดพลาดในการสร้างบัญชีนักเรียน' };
+  }
+}
+
+export async function updateStudentAction(data: {
+  id: string;
+  fullName: string;
+  studentId: string;
+  username?: string;
+  password?: string;
+  gradeLevel?: string;
+  room?: string;
+  totalPoints?: number;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const cleanName = data.fullName.trim();
+    const cleanStudentId = data.studentId.trim();
+    const cleanUsername = (data.username || cleanStudentId).trim();
+    const grade = (data.gradeLevel || 'ม.5').trim();
+    const room = (data.room || '1').trim();
+
+    if (!cleanName || !cleanStudentId) {
+      return { success: false, message: 'กรุณากรอกชื่อ-นามสกุล และรหัสนักเรียนให้ครบถ้วน' };
+    }
+
+    const checkRes = await query(
+      `SELECT id FROM public.profiles WHERE (LOWER(username) = LOWER($1) OR student_id = $2) AND id != $3 AND role = 'STUDENT';`,
+      [cleanUsername, cleanStudentId, data.id]
+    );
+
+    if (checkRes.rowCount && checkRes.rowCount > 0) {
+      return { success: false, message: `รหัสนักเรียนหรือชื่อผู้ใช้ "${cleanStudentId}" ซ้ำกับนักเรียนคนอื่น` };
+    }
+
+    if (data.password && data.password.trim()) {
+      await query(
+        `
+        UPDATE public.profiles
+        SET full_name = $1, username = $2, student_id = $3, password = $4, grade_level = $5, room = $6, updated_at = NOW()
+        WHERE id = $7 AND role = 'STUDENT';
+        `,
+        [cleanName, cleanUsername, cleanStudentId, data.password.trim(), grade, room, data.id]
+      );
+    } else {
+      await query(
+        `
+        UPDATE public.profiles
+        SET full_name = $1, username = $2, student_id = $3, grade_level = $4, room = $5, updated_at = NOW()
+        WHERE id = $6 AND role = 'STUDENT';
+        `,
+        [cleanName, cleanUsername, cleanStudentId, grade, room, data.id]
+      );
+    }
+
+    if (data.totalPoints !== undefined && !isNaN(data.totalPoints)) {
+      await query(
+        `
+        INSERT INTO public.user_scores (user_id, total_points, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET total_points = EXCLUDED.total_points, updated_at = NOW();
+        `,
+        [data.id, data.totalPoints]
+      );
+    }
+
+    return { success: true, message: 'อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว' };
+  } catch (error) {
+    console.error('updateStudentAction error:', error);
+    return { success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลนักเรียน' };
+  }
+}
+
+export async function resetStudentPasswordAction(id: string, newPassword = '1234'): Promise<boolean> {
+  try {
+    await query(
+      `UPDATE public.profiles SET password = $1, updated_at = NOW() WHERE id = $2 AND role = 'STUDENT';`,
+      [newPassword, id]
+    );
+    return true;
+  } catch (error) {
+    console.error('resetStudentPasswordAction error:', error);
     return false;
   }
 }

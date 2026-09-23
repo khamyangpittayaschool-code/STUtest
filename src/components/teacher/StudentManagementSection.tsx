@@ -8,7 +8,10 @@ import { StudentManagementItem, CsvImportResult } from '@/types/database';
 import {
   getStudentsListAction,
   importStudentsCsvAction,
-  deleteStudentAction
+  deleteStudentAction,
+  createStudentAction,
+  updateStudentAction,
+  resetStudentPasswordAction
 } from '@/lib/actions';
 import { formatPoints } from '@/lib/utils';
 import {
@@ -27,7 +30,11 @@ import {
   UserPlus,
   HelpCircle,
   X,
-  FileText
+  FileText,
+  Edit3,
+  Plus,
+  Loader2,
+  Check
 } from 'lucide-react';
 
 export function StudentManagementSection() {
@@ -36,6 +43,29 @@ export function StudentManagementSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form state for Single Create
+  const [createForm, setCreateForm] = useState({
+    fullName: '',
+    studentId: '',
+    gradeLevel: 'ม.5',
+    room: '1',
+    password: '1234',
+  });
+
+  // Form state for Edit
+  const [editForm, setEditForm] = useState({
+    id: '',
+    fullName: '',
+    studentId: '',
+    gradeLevel: 'ม.5',
+    room: '1',
+    password: '',
+    totalPoints: 0,
+  });
 
   // Import State
   const [csvRawText, setCsvRawText] = useState('');
@@ -72,6 +102,82 @@ export function StudentManagementSection() {
     setIsRefreshing(true);
     await loadStudents();
     setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const handleCreateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.fullName.trim() || !createForm.studentId.trim()) {
+      alert('กรุณากรอกชื่อ-นามสกุล และรหัสนักเรียนให้ครบถ้วน');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await createStudentAction({
+        fullName: createForm.fullName,
+        studentId: createForm.studentId,
+        password: createForm.password || '1234',
+        gradeLevel: createForm.gradeLevel || 'ม.5',
+        room: createForm.room || '1',
+      });
+      if (res.success && res.student) {
+        setStudents(prev => [res.student!, ...prev]);
+        setIsCreateModalOpen(false);
+        setCreateForm({ fullName: '', studentId: '', gradeLevel: 'ม.5', room: '1', password: '1234' });
+        alert(`✅ ${res.message}`);
+      } else {
+        alert(`❌ ${res.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการสร้างบัญชีนักเรียน');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditStudentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.id || !editForm.fullName.trim() || !editForm.studentId.trim()) {
+      alert('กรุณากรอกข้อมูลให้สมบูรณ์');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await updateStudentAction({
+        id: editForm.id,
+        fullName: editForm.fullName,
+        studentId: editForm.studentId,
+        password: editForm.password,
+        gradeLevel: editForm.gradeLevel,
+        room: editForm.room,
+        totalPoints: editForm.totalPoints,
+      });
+      if (res.success) {
+        await loadStudents();
+        setIsEditModalOpen(false);
+        alert(`✅ ${res.message}`);
+      } else {
+        alert(`❌ ${res.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการอัปเดตข้อมูลนักเรียน');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetPassword = async (st: StudentManagementItem) => {
+    if (!confirm(`คุณต้องการรีเซ็ตรหัสผ่านของ "${st.full_name}" เป็น "1234" ใช่หรือไม่?`)) {
+      return;
+    }
+    const ok = await resetStudentPasswordAction(st.id, '1234');
+    if (ok) {
+      setStudents(prev => prev.map(s => s.id === st.id ? { ...s, password: '1234' } : s));
+      alert(`✅ รีเซ็ตรหัสผ่านของ ${st.full_name} เป็น 1234 สำเร็จ!`);
+    } else {
+      alert('เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน');
+    }
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
@@ -281,6 +387,18 @@ export function StudentManagementSection() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={() => {
+              setCreateForm({ fullName: '', studentId: '', gradeLevel: 'ม.5', room: '1', password: '1234' });
+              setIsCreateModalOpen(true);
+            }}
+            variant="mint"
+            size="sm"
+            className="font-bold gap-1.5 shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" /> เพิ่มนักเรียนรายคน
+          </Button>
+
+          <Button
+            onClick={() => {
               setParsedRows([]);
               setCsvRawText('');
               setImportResult(null);
@@ -309,7 +427,7 @@ export function StudentManagementSection() {
             className="text-xs text-slate-500 hover:text-slate-800 gap-1"
             title="ดาวน์โหลดไฟล์แม่แบบ CSV ตัวอย่าง"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> ดาวน์โหลดแม่แบบ
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> แม่แบบ CSV
           </Button>
 
           <button
@@ -457,13 +575,40 @@ export function StudentManagementSection() {
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleDeleteStudent(st.id, st.full_name)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        title="ลบบัญชีนักเรียน"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditForm({
+                              id: st.id,
+                              fullName: st.full_name,
+                              studentId: st.student_id || st.username,
+                              gradeLevel: st.grade_level || 'ม.5',
+                              room: st.room || '1',
+                              password: '',
+                              totalPoints: st.total_points || 0,
+                            });
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          title="แก้ไขข้อมูลนักเรียน (Edit)"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleResetPassword(st)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                          title="รีเซ็ตรหัสผ่านเป็น 1234 (Reset Password)"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(st.id, st.full_name)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="ลบบัญชีนักเรียน (Delete)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -642,6 +787,200 @@ export function StudentManagementSection() {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal เพิ่มนักเรียนรายคน (Create Single Student) ─── */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">เพิ่มนักเรียนรายคน (Create Student)</h3>
+                  <p className="text-[11px] text-slate-400">สร้างบัญชีผู้ใช้งานใหม่สำหรับนักเรียน</p>
+                </div>
+              </div>
+              <button onClick={() => setIsCreateModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStudent} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">ชื่อ-นามสกุล *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="นายสมชาย ใจดี"
+                  value={createForm.fullName}
+                  onChange={e => setCreateForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">รหัสนักเรียน / ชื่อผู้ใช้ (Username) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="65001"
+                  value={createForm.studentId}
+                  onChange={e => setCreateForm(prev => ({ ...prev, studentId: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">ระดับชั้น</label>
+                  <select
+                    value={createForm.gradeLevel}
+                    onChange={e => setCreateForm(prev => ({ ...prev, gradeLevel: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none bg-white"
+                  >
+                    <option value="ม.4">ม.4</option>
+                    <option value="ม.5">ม.5</option>
+                    <option value="ม.6">ม.6</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">ห้อง</label>
+                  <input
+                    type="text"
+                    placeholder="1"
+                    value={createForm.room}
+                    onChange={e => setCreateForm(prev => ({ ...prev, room: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">รหัสผ่านเริ่มต้น</label>
+                <input
+                  type="text"
+                  value={createForm.password}
+                  onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="mint" disabled={isSaving} className="font-bold">
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                  บันทึกนักเรียนใหม่
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal แก้ไขข้อมูลนักเรียน (Edit Student) ─── */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">แก้ไขข้อมูลนักเรียน (Edit Student)</h3>
+                  <p className="text-[11px] text-slate-400">อัปเดตชื่อ รหัสนักเรียน ชั้น/ห้อง และรหัสผ่าน</p>
+                </div>
+              </div>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditStudentSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">ชื่อ-นามสกุล *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.fullName}
+                  onChange={e => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">รหัสนักเรียน / ชื่อผู้ใช้ (Username) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.studentId}
+                  onChange={e => setEditForm(prev => ({ ...prev, studentId: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">ระดับชั้น</label>
+                  <select
+                    value={editForm.gradeLevel}
+                    onChange={e => setEditForm(prev => ({ ...prev, gradeLevel: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none bg-white"
+                  >
+                    <option value="ม.4">ม.4</option>
+                    <option value="ม.5">ม.5</option>
+                    <option value="ม.6">ม.6</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">ห้อง</label>
+                  <input
+                    type="text"
+                    value={editForm.room}
+                    onChange={e => setEditForm(prev => ({ ...prev, room: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">คะแนนสะสม (Points)</label>
+                <input
+                  type="number"
+                  value={editForm.totalPoints}
+                  onChange={e => setEditForm(prev => ({ ...prev, totalPoints: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none font-black text-amber-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">รหัสผ่านใหม่ (หากต้องการเปลี่ยน)</label>
+                <input
+                  type="text"
+                  placeholder="ระบุรหัสผ่านใหม่ หรือเว้นว่างหากไม่ต้องการเปลี่ยน"
+                  value={editForm.password}
+                  onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-brand-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="primary" disabled={isSaving} className="font-bold">
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                  บันทึกการแก้ไข
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
