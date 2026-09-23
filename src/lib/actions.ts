@@ -441,6 +441,16 @@ export async function gradeSubmissionAction(data: {
   feedback: string;
 }): Promise<boolean> {
   try {
+    // 1. ตรวจสอบ submission เดิมก่อน เพื่อคำนวณส่วนต่างคะแนนกรณีตรวจซ้ำหรือแก้ไขคะแนน
+    const prevRes = await query(
+      `SELECT student_id, score, status FROM public.submissions WHERE id = $1;`,
+      [data.submissionId]
+    );
+    const prevSub = prevRes.rows[0];
+    const prevScore = (prevSub && prevSub.status === 'GRADED' && typeof prevSub.score === 'number')
+      ? Number(prevSub.score)
+      : 0;
+
     const res = await query(
       `
       UPDATE public.submissions
@@ -458,15 +468,17 @@ export async function gradeSubmissionAction(data: {
 
     if (res.rowCount && res.rows[0].student_id) {
       const studentId = res.rows[0].student_id;
-      // Add score to user_scores
+      const scoreDiff = data.score - prevScore;
+
+      // เพิ่มหรือปรับลดคะแนนสะสมตามผลต่าง ไม่ให้ต่ำกว่า 0
       await query(
         `
         INSERT INTO public.user_scores (user_id, total_points, updated_at)
         VALUES ($1, $2, NOW())
         ON CONFLICT (user_id) 
-        DO UPDATE SET total_points = public.user_scores.total_points + EXCLUDED.total_points, updated_at = NOW();
+        DO UPDATE SET total_points = GREATEST(0, public.user_scores.total_points + $3), updated_at = NOW();
         `,
-        [studentId, data.score]
+        [studentId, Math.max(0, data.score), scoreDiff]
       );
     }
     return true;
@@ -1119,6 +1131,32 @@ export async function getLeaderboardAction(): Promise<UserScoreLeaderboard[]> {
   } catch (error) {
     console.error('getLeaderboardAction error:', error);
     return [];
+  }
+}
+
+export async function updateStudentScoreAction(data: {
+  userId: string;
+  newPoints: number;
+}): Promise<{ success: boolean; newPoints?: number; error?: string }> {
+  try {
+    const points = Math.max(0, Math.round(Number(data.newPoints) || 0));
+
+    await query(
+      `
+      INSERT INTO public.user_scores (user_id, total_points, updated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id) 
+      DO UPDATE SET total_points = EXCLUDED.total_points, updated_at = NOW();
+      `,
+      [data.userId, points]
+    );
+
+    await query(`UPDATE public.profiles SET updated_at = NOW() WHERE id = $1;`, [data.userId]);
+
+    return { success: true, newPoints: points };
+  } catch (error: any) {
+    console.error('updateStudentScoreAction error:', error);
+    return { success: false, error: error?.message || 'Database error' };
   }
 }
 

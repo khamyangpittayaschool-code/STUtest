@@ -1047,7 +1047,7 @@ export default function TeacherDashboardPage() {
                 แสดงผลคะแนนสะสมรายบุคคล พร้อมค้นหาชื่อหรือรหัสนักเรียน
               </p>
             </div>
-            <LeaderboardWidget />
+            <LeaderboardWidget isTeacher={true} />
           </div>
         )}
 
