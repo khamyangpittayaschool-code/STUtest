@@ -1,8 +1,13 @@
 import { Pool } from 'pg';
 
-const connectionString =
+let connectionString =
   process.env.DATABASE_URL ||
   'postgresql://postgres.myyhcokodllntnbqducu:flEudKiNVSbWAG8F@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
+
+if (connectionString.includes(':5432') || connectionString.includes('db.myyhcokodllntnbqducu.supabase.co')) {
+  connectionString =
+    'postgresql://postgres.myyhcokodllntnbqducu:flEudKiNVSbWAG8F@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
+}
 
 declare global {
   // eslint-disable-next-line no-var

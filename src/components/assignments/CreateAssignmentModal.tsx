@@ -43,14 +43,17 @@ export function CreateAssignmentModal({
 
       if (newAssignment) {
         onCreated(newAssignment);
+        setTitle('');
+        setDescription('');
+        setMaxScore(20);
+        setDueDate('26/09/2569 16:00 น.');
+        onClose();
+      } else {
+        alert('ไม่สามารถสร้างงานได้ กรุณาลองใหม่อีกครั้ง หรือตรวจสอบการเชื่อมต่อ');
       }
-      setTitle('');
-      setDescription('');
-      setMaxScore(20);
-      setDueDate('26/09/2569 16:00 น.');
-      onClose();
     } catch (err) {
       console.error(err);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่');
     } finally {
       setIsSubmitting(false);
     }

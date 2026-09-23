@@ -35,13 +35,16 @@ export default function RegisterPage() {
 
       if (student) {
         setCurrentStudentSession(student);
+        setIsLoading(false);
+        setSuccess(true);
+        setTimeout(() => router.push('/student'), 1000);
+      } else {
+        setIsLoading(false);
+        alert('ไม่สามารถสร้างบัญชีได้ กรุณาตรวจสอบข้อมูลหรือลองใหม่อีกครั้ง');
       }
-      setIsLoading(false);
-      setSuccess(true);
-      setTimeout(() => router.push('/student'), 1000);
     } catch {
       setIsLoading(false);
-      alert('เกิดข้อผิดพลาดในการสมัครสมาชิก');
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล');
     }
   };
 
