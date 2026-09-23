@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,18 @@ export default function StudentDashboardPage() {
   const [posts, setPosts] = useState<FeedPost[]>(getPosts());
   const [assignments, setAssignments] = useState<AssignmentItem[]>(getAssignments());
   const [selectedAssign, setSelectedAssign] = useState<AssignmentItem | null>(null);
+
+  // Auto-sync ข้อมูลอัตโนมัติ (เมื่อครูโพสต์ข่าวสารหรือมอบหมายงาน จะเด้งขึ้นทันที)
+  useEffect(() => {
+    const syncData = () => {
+      setPosts(getPosts());
+      setAssignments(getAssignments());
+      setDashboardData(getStudentDashboardData());
+    };
+    syncData();
+    const timer = setInterval(syncData, 1500);
+    return () => clearInterval(timer);
+  }, []);
 
   // Assignment Form State
   const [submissionLink, setSubmissionLink] = useState('');
@@ -170,7 +182,7 @@ export default function StudentDashboardPage() {
           }`}
         >
           <Newspaper className="w-4 h-4" />
-          <span>ข่าวสาร</span>
+          <span>ข่าวสาร {posts.length > 0 ? `(${posts.length})` : ''}</span>
         </button>
       </div>
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { LeaderboardWidget } from '@/components/gamification/LeaderboardWidget';
 import { SingleCodeGenerator } from '@/components/gamification/SingleCodeGenerator';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
+import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal';
 import {
   getPosts,
   deletePost,
@@ -14,7 +15,8 @@ import {
   addComment,
   getSubmissions,
   gradeSubmissionInStore,
-  SubmissionItem
+  SubmissionItem,
+  getAssignments
 } from '@/lib/data-store';
 import {
   School, LayoutDashboard, Megaphone, CheckCircle2, Clock, FileText,
@@ -37,11 +39,12 @@ export default function TeacherDashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionItem[]>(getSubmissions());
   const [selectedSub, setSelectedSub] = useState<SubmissionItem | null>(null);
   const [gradeFilter, setGradeFilter] = useState<'ALL' | 'SUBMITTED' | 'GRADED'>('ALL');
-  const [gradeScore, setGradeScore] = useState('20');
+  const [gradeScore, setGradeScore] = useState('1');
   const [gradeFeedback, setGradeFeedback] = useState('ผลงานยอดเยี่ยม');
   const [gradingSuccess, setGradingSuccess] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>(getPosts());
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -51,8 +54,8 @@ export default function TeacherDashboardPage() {
     e.preventDefault();
     if (!selectedSub) return;
     const num = parseFloat(gradeScore);
-    if (isNaN(num) || num < 0 || num > selectedSub.maxScore) {
-      alert(`คะแนนต้องอยู่ระหว่าง 0 ถึง ${selectedSub.maxScore}`);
+    if (isNaN(num) || num < 1 || num > selectedSub.maxScore) {
+      alert(`คะแนนต้องเริ่มต้นที่ 1 ถึง ${selectedSub.maxScore}`);
       return;
     }
     gradeSubmissionInStore(selectedSub.id, num, gradeFeedback);
@@ -153,14 +156,24 @@ export default function TeacherDashboardPage() {
                   กิจกรรม: อบรมการประยุกต์ใช้ AI • งานที่ 1: สร้างภาพด้วย AI (คะแนนเต็ม 20)
                 </p>
               </div>
-              <Button
-                onClick={() => setActiveSection('grade')}
-                variant="primary"
-                size="sm"
-                className="font-bold gap-1.5 self-start sm:self-auto"
-              >
-                <CheckCircle2 className="w-4 h-4" /> เริ่มตรวจงาน ({waitingGrade} คน)
-              </Button>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Button
+                  onClick={() => setIsAssignModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="font-bold gap-1.5 border-brand-300 text-brand-700 hover:bg-brand-50"
+                >
+                  <Plus className="w-4 h-4" /> สร้างงาน / มอบหมายงาน
+                </Button>
+                <Button
+                  onClick={() => setActiveSection('grade')}
+                  variant="primary"
+                  size="sm"
+                  className="font-bold gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> เริ่มตรวจงาน ({waitingGrade} คน)
+                </Button>
+              </div>
             </div>
 
             {/* Summary Cards */}
@@ -438,36 +451,47 @@ export default function TeacherDashboardPage() {
               <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">ระบบตรวจงานนักเรียน</h1>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  งานที่ 1: สร้างภาพด้วย AI (คะแนนเต็ม 20) • รอตรวจ {waitingGrade} คน จาก {totalSubs} คน
+                  รอตรวจ {waitingGrade} คน จากงานที่ส่งทั้งหมด {totalSubs} ชิ้น • ให้คะแนนเริ่มต้นที่ 1
                 </p>
               </div>
 
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold self-start sm:self-auto">
-                <button
-                  onClick={() => setGradeFilter('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    gradeFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                  }`}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  onClick={() => setIsAssignModalOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="font-bold gap-1 border-brand-300 text-brand-700 hover:bg-brand-50"
                 >
-                  ทั้งหมด ({totalSubs})
-                </button>
-                <button
-                  onClick={() => setGradeFilter('SUBMITTED')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    gradeFilter === 'SUBMITTED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  รอตรวจ ({waitingGrade})
-                </button>
-                <button
-                  onClick={() => setGradeFilter('GRADED')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    gradeFilter === 'GRADED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  ตรวจแล้ว ({gradedCount})
-                </button>
+                  <Plus className="w-4 h-4" /> สร้างงานใหม่
+                </Button>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold self-start sm:self-auto">
+                  <button
+                    onClick={() => setGradeFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      gradeFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    ทั้งหมด ({totalSubs})
+                  </button>
+                  <button
+                    onClick={() => setGradeFilter('SUBMITTED')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      gradeFilter === 'SUBMITTED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    รอตรวจ ({waitingGrade})
+                  </button>
+                  <button
+                    onClick={() => setGradeFilter('GRADED')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      gradeFilter === 'GRADED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    ตรวจแล้ว ({gradedCount})
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -486,8 +510,8 @@ export default function TeacherDashboardPage() {
                         key={sub.id}
                         onClick={() => {
                           setSelectedSub(sub);
-                          setGradeScore(sub.score ? String(sub.score) : '18');
-                          setGradeFeedback(sub.feedback || 'ผลงานดี มีความคิดสร้างสรรค์ และเข้าใจหลักการ Prompting');
+                          setGradeScore(sub.score ? String(sub.score) : '1');
+                          setGradeFeedback(sub.feedback || 'ผลงานยอดเยี่ยม');
                           setGradingSuccess(false);
                         }}
                         className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
@@ -575,12 +599,12 @@ export default function TeacherDashboardPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">
-                            ให้คะแนน (เต็ม {selectedSub.maxScore})
+                            ให้คะแนน (เริ่มต้นที่ 1 เต็ม {selectedSub.maxScore})
                           </label>
                           <input
                             type="number"
                             step="0.5"
-                            min={0}
+                            min={1}
                             max={selectedSub.maxScore}
                             value={gradeScore}
                             onChange={e => setGradeScore(e.target.value)}
@@ -657,6 +681,16 @@ export default function TeacherDashboardPage() {
         onClose={() => { setIsPostModalOpen(false); setEditingPost(null); }}
         onCreated={handlePostSaved}
         editPost={editingPost}
+      />
+
+      {/* Modal สร้างงาน / มอบหมายงาน */}
+      <CreateAssignmentModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        onCreated={() => {
+          alert('✅ มอบหมายงานให้นักเรียนเรียบร้อยแล้ว! งานจะเด้งเข้าสู่ช่องส่งงานของนักเรียนทันที');
+          setIsAssignModalOpen(false);
+        }}
       />
     </div>
   );
