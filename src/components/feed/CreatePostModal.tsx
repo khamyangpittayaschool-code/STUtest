@@ -163,60 +163,68 @@ export function CreatePostModal({
           </div>
 
           {/* แนบรูปภาพประกาศ */}
-          <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 text-xs">
+          <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-xs">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700 flex items-center gap-1.5">
+              <label className="font-bold text-slate-800 flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-brand-600" />
-                <span>แนบรูปภาพประกาศ (Image)</span>
+                <span>แนบรูปภาพประกอบประกาศ (Image)</span>
               </label>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-[11px] font-bold text-brand-600 hover:underline flex items-center gap-1"
-              >
-                <Upload className="w-3.5 h-3.5" /> เลือกรูปจากเครื่อง
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageFileChange}
-                className="hidden"
-              />
-            </div>
-
-            <div className="relative">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="วาง URL รูปภาพ (https://.../photo.png) หรืออัปโหลดจากเครื่องด้านบน"
-                className="w-full rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-xs focus:border-brand-500 focus:outline-none bg-white"
-              />
               {imageUrl && (
                 <button
                   type="button"
-                  onClick={() => setImageUrl('')}
-                  className="absolute right-2 top-2 text-slate-400 hover:text-rose-600"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] font-bold text-brand-600 hover:underline"
                 >
-                  <X className="w-4 h-4" />
+                  เปลี่ยนรูปภาพ
                 </button>
               )}
             </div>
 
-            {imageUrl && (
-              <div className="relative rounded-xl overflow-hidden border border-slate-200 max-h-44 bg-slate-900/5 flex items-center justify-center mt-2 group">
-                <img src={imageUrl} alt="Post Preview" className="max-h-44 object-contain" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageFileChange}
+              className="hidden"
+            />
+
+            {!imageUrl ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-brand-500 hover:bg-brand-50/40 rounded-2xl p-4 text-center cursor-pointer transition-all bg-white group"
+              >
+                <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <p className="font-bold text-slate-700 text-xs">คลิกเพื่ออัปโหลดรูปภาพจากเครื่อง</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">รองรับไฟล์ JPG, PNG, WEBP, GIF</p>
+              </div>
+            ) : (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900/5 max-h-56 flex items-center justify-center mt-2 group">
+                <img src={imageUrl} alt="Post Preview" className="max-h-56 w-full object-contain bg-white" />
                 <button
                   type="button"
                   onClick={() => setImageUrl('')}
-                  className="absolute top-2 right-2 bg-rose-600 text-white p-1 rounded-full shadow-md hover:bg-rose-700 transition-colors"
+                  className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-xl shadow-md transition-colors flex items-center gap-1 text-[11px] font-bold"
                   title="ลบรูปภาพ"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" /> ลบรูปภาพ
                 </button>
               </div>
             )}
+
+            <div className="pt-1">
+              <span className="text-[11px] text-slate-400 block mb-1">หรือ วาง URL รูปภาพ (Image URL):</span>
+              <div className="relative">
+                <input
+                  type="url"
+                  value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://.../image.png"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:border-brand-500 focus:outline-none bg-white"
+                />
+              </div>
+            </div>
           </div>
 
           {/* แนบลิงก์ที่เกี่ยวข้อง */}
