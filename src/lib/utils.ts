@@ -16,15 +16,35 @@ export function formatThaiDate(dateString?: string | null): string {
   if (!dateString) return '-';
   try {
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
     return date.toLocaleDateString('th-TH', {
+      timeZone: 'Asia/Bangkok',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     }) + ' น.';
   } catch {
-    return dateString;
+    return String(dateString);
+  }
+}
+
+export function getBangkokNowString(): string {
+  try {
+    const date = new Date();
+    return date.toLocaleDateString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }) + ' น.';
+  } catch {
+    return new Date().toLocaleString();
   }
 }
 

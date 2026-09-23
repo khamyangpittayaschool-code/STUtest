@@ -263,6 +263,8 @@ export async function getAssignmentsAction(studentId?: string): Promise<Assignme
         score: sub?.score != null ? Number(sub.score) : undefined,
         feedback: sub?.feedback || undefined,
         submitted_at: sub?.submitted_at ? formatThaiDate(sub.submitted_at) : undefined,
+        submitted_content: sub?.content || undefined,
+        submitted_link: sub?.link_url || undefined,
       };
     });
   } catch (error) {
@@ -1071,7 +1073,18 @@ function formatThaiDate(d: any): string {
   if (!d) return 'เมื่อสักครู่';
   try {
     const date = new Date(d);
-    return date.toLocaleDateString('th-TH') + ' ' + date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    if (isNaN(date.getTime())) return String(d);
+    return date.toLocaleDateString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }) + ' ' + date.toLocaleTimeString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }) + ' น.';
   } catch {
     return 'เมื่อสักครู่';
   }

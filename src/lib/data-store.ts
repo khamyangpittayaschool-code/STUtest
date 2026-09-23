@@ -75,6 +75,8 @@ export interface AssignmentItem {
   score?: number;
   feedback?: string;
   submitted_at?: string;
+  submitted_content?: string;
+  submitted_link?: string;
 }
 
 export interface SubmissionItem {
@@ -264,11 +266,22 @@ export function addAssignment(assignment: Omit<AssignmentItem, 'id' | 'created_a
 export function submitAssignmentStore(assignmentId: string, content: string, linkUrl: string, isDraft = false) {
   const student = getCurrentStudent();
   const assign = currentAssignments.find(a => a.id === assignmentId);
+  const nowBangkok = new Date().toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }) + ' น.';
 
   if (assign) {
     assign.submitted = !isDraft;
     assign.submission_status = isDraft ? 'DRAFT' : 'SUBMITTED';
-    assign.submitted_at = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    assign.submitted_at = nowBangkok;
+    assign.submitted_content = content;
+    assign.submitted_link = linkUrl;
   }
 
   if (!isDraft) {
@@ -278,7 +291,7 @@ export function submitAssignmentStore(assignmentId: string, content: string, lin
       studentName: student.full_name,
       studentId: student.student_id || '-',
       classroom: `ม.${student.grade_level?.replace('ม.', '') || '5'}/${student.room || '1'}`,
-      submittedAt: new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
+      submittedAt: nowBangkok,
       status: 'SUBMITTED',
       maxScore: assign ? assign.max_score : 20,
       content,

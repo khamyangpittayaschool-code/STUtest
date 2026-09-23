@@ -19,7 +19,8 @@ import {
   submitAssignmentAction,
   getStudentDashboardAction,
 } from '@/lib/actions';
-import { formatPoints } from '@/lib/utils';
+import { formatPoints, getBangkokNowString } from '@/lib/utils';
+import { fireCelebrationConfetti } from '@/components/gamification/ConfettiEffect';
 import {
   Star,
   Trophy,
@@ -28,6 +29,7 @@ import {
   Send,
   FileText,
   CheckCircle,
+  CheckCircle2,
   Upload,
   Link as LinkIcon,
   Sparkles,
@@ -36,7 +38,9 @@ import {
   Clock,
   ArrowLeft,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 
 import { Profile, CodeRedemptionResult } from '@/types/database';
@@ -119,10 +123,19 @@ export default function StudentDashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Assignment Form State
+  // Assignment Form & Submission Modal State
   const [submissionLink, setSubmissionLink] = useState('');
   const [submissionContent, setSubmissionContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittedNotice, setIsSubmittedNotice] = useState<string | null>(null);
+
+  // Submission Success Popup Modal
+  const [successModalData, setSuccessModalData] = useState<{
+    title: string;
+    submittedAt: string;
+    maxScore: number;
+    linkUrl?: string;
+  } | null>(null);
 
   const handleRedeemSuccess = (result?: CodeRedemptionResult) => {
     const points = result?.points_added || 0;
@@ -154,34 +167,58 @@ export default function StudentDashboardPage() {
 
   const handleOpenAssignment = (assign: AssignmentItem) => {
     setSelectedAssign(assign);
-    setSubmissionContent('');
-    setSubmissionLink('');
+    setSubmissionContent(assign.submitted_content || '');
+    setSubmissionLink(assign.submitted_link || '');
     setIsSubmittedNotice(null);
   };
 
   const handleSubmitAssignment = async (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
-    if (!selectedAssign) return;
+    if (!selectedAssign || isSubmitting) return;
 
-    await submitAssignmentAction({
-      assignmentId: selectedAssign.id,
-      studentId: currentStudent.id !== 'u-guest' ? currentStudent.id : undefined,
-      studentName: currentStudent.full_name || 'นักเรียน',
-      classroom: `ม.${currentStudent.grade_level?.replace('ม.', '') || '5'}/${currentStudent.room || '1'}`,
-      content: submissionContent,
-      linkUrl: submissionLink,
-      maxScore: selectedAssign.max_score,
-      isDraft,
-    });
+    setIsSubmitting(true);
+    try {
+      const bangkokTime = getBangkokNowString();
 
-    await syncData();
+      const success = await submitAssignmentAction({
+        assignmentId: selectedAssign.id,
+        studentId: currentStudent.id !== 'u-guest' ? currentStudent.id : undefined,
+        studentName: currentStudent.full_name || 'นักเรียน',
+        classroom: `ม.${currentStudent.grade_level?.replace('ม.', '') || '5'}/${currentStudent.room || '1'}`,
+        content: submissionContent,
+        linkUrl: submissionLink,
+        maxScore: selectedAssign.max_score,
+        isDraft,
+      });
 
-    if (isDraft) {
-      setIsSubmittedNotice('💾 บันทึกแบบร่าง (Draft) สำเร็จ! คุณสามารถกลับมาแก้ไขและส่งจริงได้ก่อนกำหนด');
-    } else {
-      setIsSubmittedNotice(`✅ ส่งงาน "${selectedAssign.title}" สำเร็จเรียบร้อย! (สถานะ: รอตรวจ)`);
+      await syncData();
+
+      if (success) {
+        if (!isDraft) {
+          // 🎉 จุดพลุเฉลิมฉลอง
+          fireCelebrationConfetti();
+
+          // แสดง Modal แจ้งเตือนส่งงานสำเร็จ พร้อมเวลาไทย Bangkok
+          setSuccessModalData({
+            title: selectedAssign.title,
+            submittedAt: bangkokTime,
+            maxScore: selectedAssign.max_score,
+            linkUrl: submissionLink,
+          });
+
+          setIsSubmittedNotice(`✅ ส่งงาน "${selectedAssign.title}" สำเร็จเรียบร้อย! (สถานะ: รอตรวจ)`);
+        } else {
+          setIsSubmittedNotice('💾 บันทึกแบบร่าง (Draft) สำเร็จ! คุณสามารถกลับมาแก้ไขและส่งจริงได้ก่อนกำหนด');
+        }
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+      }
+    } catch (err) {
+      console.error('handleSubmitAssignment error:', err);
+      alert('เกิดข้อผิดพลาดในการส่งงาน');
+    } finally {
+      setIsSubmitting(false);
     }
-    setTimeout(() => setIsSubmittedNotice(null), 4000);
   };
 
   return (
@@ -411,6 +448,25 @@ export default function StudentDashboardPage() {
                 </div>
               )}
 
+              {selectedAssign.submission_status === 'SUBMITTED' && (
+                <div className="mb-5 p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-slate-800 space-y-1">
+                  <div className="flex items-center justify-between font-bold text-emerald-900">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> ส่งงานเรียบร้อยแล้ว (สถานะ: รอตรวจ)
+                    </span>
+                    <Badge variant="mint" className="text-[11px]">SUBMITTED</Badge>
+                  </div>
+                  {selectedAssign.submitted_at && (
+                    <p className="text-emerald-700 text-[11px]">
+                      เวลาที่ส่ง: <strong>{selectedAssign.submitted_at}</strong> (เวลาประเทศไทย Bangkok GMT+7)
+                    </p>
+                  )}
+                  <p className="text-slate-500 text-[11px]">
+                    คุณสามารถแก้ไข Prompt หรืออัปเดตลิงก์งานใหม่และกดส่งอีกครั้งได้ก่อนครบกำหนดส่ง
+                  </p>
+                </div>
+              )}
+
               {selectedAssign.submission_status === 'GRADED' && (
                 <div className="mb-5 p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-slate-800 space-y-1">
                   <div className="flex items-center justify-between font-bold text-amber-900">
@@ -470,13 +526,35 @@ export default function StudentDashboardPage() {
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={isSubmitting}
                     onClick={(e) => handleSubmitAssignment(e, true)}
                     className="text-xs font-bold"
                   >
                     บันทึกแบบร่าง (Draft)
                   </Button>
-                  <Button type="submit" variant="mint" size="lg" className="font-bold text-xs">
-                    <Send className="w-3.5 h-3.5 mr-1.5" /> ส่งงานจริง
+                  <Button
+                    type="submit"
+                    variant="mint"
+                    size="lg"
+                    disabled={isSubmitting}
+                    className="font-bold text-xs"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        กำลังส่งงาน...
+                      </>
+                    ) : selectedAssign.submission_status === 'SUBMITTED' ? (
+                      <>
+                        <Send className="w-3.5 h-3.5 mr-1.5" />
+                        ส่งงานใหม่ (อัปเดต)
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5 mr-1.5" />
+                        ส่งงานจริง
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -506,6 +584,88 @@ export default function StudentDashboardPage() {
               <PostCard key={post.id} post={post} onUpdate={() => syncData()} />
             ))
           )}
+        </div>
+      )}
+
+      {/* 🌟 Modal แจ้งเตือนการส่งงานสำเร็จ (Submission Success Modal) */}
+      {successModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 text-center animate-in zoom-in-95 duration-200">
+            {/* Glowing Icon */}
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 ring-8 ring-emerald-50">
+              <CheckCircle2 className="w-9 h-9 text-emerald-600" />
+            </div>
+
+            <Badge variant="mint" className="mb-2 text-xs font-bold px-3 py-1">
+              🎉 บันทึกการส่งงานสำเร็จ
+            </Badge>
+
+            <h3 className="text-xl font-black text-slate-900 mb-1">
+              ส่งงานสำเร็จเรียบร้อย!
+            </h3>
+            <p className="text-xs text-slate-500 mb-5">
+              ระบบได้รับข้อมูลชิ้นงานของนักเรียนแล้ว พร้อมส่งต่อไปยังครูผู้สอน
+            </p>
+
+            {/* รายละเอียดการส่งงาน */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2.5 text-xs mb-5">
+              <div>
+                <span className="text-slate-400 block text-[11px]">ชื่องานที่ส่ง:</span>
+                <span className="font-bold text-slate-800 text-sm">{successModalData.title}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                <span className="text-slate-500">เวลาที่ส่ง (เวลาไทย):</span>
+                <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                  {successModalData.submittedAt}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                <span className="text-slate-500">คะแนนเต็ม:</span>
+                <span className="font-bold text-slate-700">
+                  {successModalData.maxScore} คะแนน
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                <span className="text-slate-500">สถานะ:</span>
+                <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> รอคุณครูตรวจ (SUBMITTED)
+                </span>
+              </div>
+              {successModalData.linkUrl && (
+                <div className="border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-400 block text-[11px] mb-0.5">ลิงก์ชิ้นงานที่แนบ:</span>
+                  <a
+                    href={successModalData.linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-600 font-bold hover:underline inline-flex items-center gap-1 break-all line-clamp-1"
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" /> {successModalData.linkUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* ปุ่มกดดำเนินการ */}
+            <div className="space-y-2">
+              <Button
+                onClick={() => {
+                  setSuccessModalData(null);
+                  setSelectedAssign(null); // นำนักเรียนกลับสู่หน้ารายการงาน เพื่อเห็นสถานะส่งแล้วทันที
+                }}
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> ตกลง (กลับสู่หน้ารายการงาน)
+              </Button>
+              <button
+                type="button"
+                onClick={() => setSuccessModalData(null)}
+                className="w-full py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                ดูรายละเอียดหน้านี้ต่อ
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
