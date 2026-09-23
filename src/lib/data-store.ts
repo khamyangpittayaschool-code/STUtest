@@ -80,6 +80,7 @@ export interface AssignmentItem {
 export interface SubmissionItem {
   id: string;
   assignmentId?: string;
+  assignmentTitle?: string;
   studentName: string;
   studentId: string;
   classroom: string;

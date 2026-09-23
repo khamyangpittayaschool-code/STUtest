@@ -385,6 +385,7 @@ export async function getSubmissionsAction(): Promise<SubmissionItem[]> {
     return res.rows.map((row) => ({
       id: row.id,
       assignmentId: row.assignment_id,
+      assignmentTitle: row.assignment_title || 'งานที่มอบหมาย',
       studentName: row.student_name,
       studentId: row.student_code,
       classroom: row.classroom,
