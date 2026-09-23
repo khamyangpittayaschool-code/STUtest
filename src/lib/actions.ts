@@ -578,7 +578,32 @@ export async function registerStudentAction(data: {
   username: string;
 }): Promise<Profile | null> {
   try {
-    const studentCode = data.studentId || `${Date.now()}`.slice(-6);
+    const cleanUsername = data.username.trim();
+    const cleanName = data.fullName.trim();
+    const studentCode = data.studentId?.trim() || `${Date.now()}`.slice(-6);
+
+    // 1. ตรวจสอบว่ามีชื่อผู้ใช้นี้อยู่แล้วหรือไม่
+    const existing = await query(
+      `SELECT * FROM public.profiles WHERE LOWER(username) = LOWER($1) LIMIT 1;`,
+      [cleanUsername]
+    );
+
+    if (existing.rowCount && existing.rowCount > 0) {
+      const existingUser = existing.rows[0];
+      // อัปเดตข้อมูลให้ทันสมัย แล้วนำโปรไฟล์นั้นเข้าสู่ระบบทันที
+      const updated = await query(
+        `
+        UPDATE public.profiles
+        SET full_name = $1, grade_level = $2, room = $3, updated_at = NOW()
+        WHERE id = $4
+        RETURNING *;
+        `,
+        [cleanName, data.gradeLevel, data.room, existingUser.id]
+      );
+      return updated.rows[0] || existingUser;
+    }
+
+    // 2. ถ้าเป็นชื่อผู้ใช้ใหม่ ให้สร้างบัญชีใหม่
     const res = await query(
       `
       INSERT INTO public.profiles (
@@ -587,8 +612,8 @@ export async function registerStudentAction(data: {
       RETURNING *;
       `,
       [
-        data.fullName,
-        data.username,
+        cleanName,
+        cleanUsername,
         studentCode,
         data.gradeLevel,
         data.room,
@@ -616,9 +641,13 @@ export async function registerStudentAction(data: {
 
 export async function loginStudentAction(username: string): Promise<Profile | null> {
   try {
+    const q = username.trim();
     const res = await query(
-      `SELECT * FROM public.profiles WHERE role = 'STUDENT' AND username = $1 LIMIT 1;`,
-      [username.trim()]
+      `SELECT * FROM public.profiles 
+       WHERE role = 'STUDENT' 
+         AND (LOWER(username) = LOWER($1) OR student_id = $1 OR full_name ILIKE $2) 
+       LIMIT 1;`,
+      [q, `%${q}%`]
     );
     if (res.rowCount === 0) return null;
     return res.rows[0];
