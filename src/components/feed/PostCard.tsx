@@ -133,7 +133,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
             <img
               src={post.image_url}
               alt={post.title}
-              className="w-full max-h-[460px] object-cover hover:scale-[1.01] transition-transform cursor-pointer"
+              className="w-full max-h-[480px] object-contain bg-slate-900/5 hover:opacity-95 transition-opacity cursor-pointer"
               onClick={() => setIsImageModalOpen(true)}
             />
             <div className="absolute bottom-2 right-2 bg-slate-900/60 text-white text-[10px] px-2 py-1 rounded-lg backdrop-blur-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

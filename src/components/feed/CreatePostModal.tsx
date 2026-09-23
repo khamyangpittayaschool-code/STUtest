@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { FeedPost } from '@/lib/data-store';
 import { createPostAction, updatePostAction } from '@/lib/actions';
-import { X, Plus, Megaphone, Pin, Save, Image as ImageIcon, Link as LinkIcon, Upload, Trash2 } from 'lucide-react';
+import { X, Plus, Megaphone, Pin, Save, Image as ImageIcon, Link as LinkIcon, Upload, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -31,8 +31,72 @@ export function CreatePostModal({
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [imageSizeText, setImageSizeText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper บีบอัดรูปภาพฝั่ง client ด้วย Canvas
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      // ถ้าเป็น GIF ให้ใช้ไฟล์เดิมเพื่อคงภาพเคลื่อนไหว (ถ้าไม่เกิน 2MB)
+      if (file.type === 'image/gif' && file.size < 2 * 1024 * 1024) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const maxDimension = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        // วาดพื้นหลังสีขาวสำหรับภาพโปร่งใสเมื่อแปลงเป็น JPEG
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // คุณภาพ 0.8 ให้ภาพคมชัด อ่านตัวหนังสือเกียรติบัตรได้ชัดเจน แต่ขนาดไฟล์ลดลงเหลือ ~100-200KB
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(dataUrl);
+      };
+
+      img.onerror = (err) => {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      };
+
+      img.src = objectUrl;
+    });
+  };
 
   // เติมข้อมูลเดิมเมื่ออยู่ในโหมดแก้ไข
   useEffect(() => {
@@ -43,6 +107,7 @@ export function CreatePostModal({
       setAllowComment(editPost.allow_comment);
       setImageUrl(editPost.image_url || '');
       setLinkUrl(editPost.link_url || '');
+      setImageSizeText('');
     } else {
       setTitle('');
       setContent('');
@@ -50,6 +115,7 @@ export function CreatePostModal({
       setAllowComment(true);
       setImageUrl('');
       setLinkUrl('');
+      setImageSizeText('');
     }
   }, [editPost, isOpen]);
 
@@ -57,32 +123,54 @@ export function CreatePostModal({
 
   const isEditing = !!editPost;
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป กรุณาเลือกไฟล์ขนาดไม่เกิน 8MB');
+    if (file.size > 20 * 1024 * 1024) {
+      alert('ขนาดไฟล์รูปภาพใหญ่เกินไป กรุณาเลือกไฟล์ขนาดไม่เกิน 20MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      if (evt.target?.result) {
-        setImageUrl(evt.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsCompressing(true);
+      const compressedDataUrl = await compressImage(file);
+      setImageUrl(compressedDataUrl);
+
+      // คำนวณขนาดหลังบีบอัด
+      const sizeInKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
+      setImageSizeText(`${sizeInKb} KB (ปรับขนาดเพื่อความเร็วและความคมชัด)`);
+    } catch (err) {
+      console.error('Image compression error:', err);
+      // Fallback เป็น readAsDataURL ทั่วไป
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (evt.target?.result) {
+          setImageUrl(evt.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    setImageSizeText('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim() || isSubmitting) return;
+    if (!title.trim() || !content.trim() || isSubmitting || isCompressing) return;
 
     setIsSubmitting(true);
     try {
       if (isEditing && editPost) {
-        await updatePostAction(editPost.id, {
+        const success = await updatePostAction(editPost.id, {
           title: title.trim(),
           content: content.trim(),
           is_pinned: isPinned,
@@ -90,6 +178,12 @@ export function CreatePostModal({
           image_url: imageUrl.trim() || undefined,
           link_url: linkUrl.trim() || undefined,
         });
+
+        if (!success) {
+          alert('ไม่สามารถอัปเดตโพสต์ได้ กรุณาลองใหม่อีกครั้ง');
+          return;
+        }
+
         onCreated({
           ...editPost,
           title: title.trim(),
@@ -111,12 +205,18 @@ export function CreatePostModal({
           imageUrl: imageUrl.trim() || undefined,
           linkUrl: linkUrl.trim() || undefined,
         });
-        if (newPost) onCreated(newPost);
+
+        if (!newPost) {
+          alert('เกิดข้อผิดพลาดในการบันทึกโพสต์ กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง');
+          return;
+        }
+
+        onCreated(newPost);
       }
       onClose();
-    } catch (err) {
-      console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกโพสต์');
+    } catch (err: any) {
+      console.error('Post submit error:', err);
+      alert(err?.message || 'เกิดข้อผิดพลาดในการบันทึกโพสต์ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsSubmitting(false);
     }
@@ -188,7 +288,13 @@ export function CreatePostModal({
               className="hidden"
             />
 
-            {!imageUrl ? (
+            {isCompressing ? (
+              <div className="border-2 border-dashed border-brand-300 bg-brand-50/50 rounded-2xl p-6 text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-brand-600 mx-auto mb-2" />
+                <p className="font-bold text-slate-700 text-xs">กำลังประมวลผลและปรับขนาดรูปภาพ...</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">บีบอัดรูปภาพเพื่อให้อัปโหลดได้เร็วและตัวหนังสือคมชัด</p>
+              </div>
+            ) : !imageUrl ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 hover:border-brand-500 hover:bg-brand-50/40 rounded-2xl p-4 text-center cursor-pointer transition-all bg-white group"
@@ -197,19 +303,27 @@ export function CreatePostModal({
                   <Upload className="w-5 h-5" />
                 </div>
                 <p className="font-bold text-slate-700 text-xs">คลิกเพื่ออัปโหลดรูปภาพจากเครื่อง</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">รองรับไฟล์ JPG, PNG, WEBP, GIF</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">รองรับรูปภาพทั่วไป เกียรติบัตร และภาพถ่าย (JPG, PNG, WEBP)</p>
               </div>
             ) : (
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900/5 max-h-56 flex items-center justify-center mt-2 group">
-                <img src={imageUrl} alt="Post Preview" className="max-h-56 w-full object-contain bg-white" />
-                <button
-                  type="button"
-                  onClick={() => setImageUrl('')}
-                  className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-xl shadow-md transition-colors flex items-center gap-1 text-[11px] font-bold"
-                  title="ลบรูปภาพ"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> ลบรูปภาพ
-                </button>
+              <div className="space-y-1.5 mt-2">
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900/5 max-h-56 flex items-center justify-center group">
+                  <img src={imageUrl} alt="Post Preview" className="max-h-56 w-full object-contain bg-slate-50" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-xl shadow-md transition-colors flex items-center gap-1 text-[11px] font-bold"
+                    title="ลบรูปภาพ"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> ลบรูปภาพ
+                  </button>
+                </div>
+                {imageSizeText && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-xl">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{imageSizeText}</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -269,11 +383,24 @@ export function CreatePostModal({
             <Button type="button" variant="outline" onClick={onClose}>
               ยกเลิก
             </Button>
-            <Button type="submit" variant={isEditing ? 'mint' : 'primary'} disabled={isSubmitting} className="font-bold">
-              {isEditing ? (
-                <><Save className="w-4 h-4 mr-1" /> บันทึกการแก้ไข</>
+            <Button
+              type="submit"
+              variant={isEditing ? 'mint' : 'primary'}
+              disabled={isSubmitting || isCompressing}
+              className="font-bold"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" /> กำลังบันทึก...
+                </>
+              ) : isEditing ? (
+                <>
+                  <Save className="w-4 h-4 mr-1" /> บันทึกการแก้ไข
+                </>
               ) : (
-                <><Plus className="w-4 h-4 mr-1" /> เผยแพร่โพสต์</>
+                <>
+                  <Plus className="w-4 h-4 mr-1" /> เผยแพร่โพสต์
+                </>
               )}
             </Button>
           </div>
