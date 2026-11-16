@@ -6,9 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:export": "node scripts/db-sync.js export",
+    "db:import": "node scripts/db-sync.js import",
+    "db:pull-supabase": "node scripts/db-sync.js pull-supabase"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "canvas-confetti": "^1.9.4",

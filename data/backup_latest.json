@@ -1,0 +1,36 @@
+{
+  "exported_at": "2026-11-16T03:37:28.404Z",
+  "data": {
+    "profiles": [
+      {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "role": "TEACHER",
+        "full_name": "ครูผู้สอน",
+        "email": "admin@school.ac.th",
+        "username": "admin",
+        "student_id": null,
+        "grade_level": "ม.5",
+        "room": "1",
+        "academic_year": "2567",
+        "teacher_position": "ครูผู้สอน",
+        "department": "กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี",
+        "organization": null,
+        "avatar_url": null,
+        "password": "1234",
+        "status": "ACTIVE",
+        "last_login_at": null,
+        "created_at": "2026-11-16T03:34:53.525Z",
+        "updated_at": "2026-11-16T03:34:53.525Z"
+      }
+    ],
+    "activities": [],
+    "code_batches": [],
+    "activity_codes": [],
+    "user_scores": [],
+    "posts": [],
+    "comments": [],
+    "assignments": [],
+    "submissions": [],
+    "audit_logs": []
+  }
+}
